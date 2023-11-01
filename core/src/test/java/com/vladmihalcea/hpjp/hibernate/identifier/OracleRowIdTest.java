@@ -2,162 +2,158 @@ package com.vladmihalcea.hpjp.hibernate.identifier;
 
 import com.vladmihalcea.hpjp.util.AbstractOracleIntegrationTest;
 import jakarta.persistence.*;
-import org.hibernate.annotations.RowId;
-import org.junit.Test;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.hibernate.annotations.RowId;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
 public class OracleRowIdTest extends AbstractOracleIntegrationTest {
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[] {
-            Post.class,
-            PostComment.class
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Post.class, PostComment.class};
+  }
 
-    @Test
-    public void test() {
-        doInJPA(entityManager -> {
-            Post post = new Post();
-            post.setId(1L);
-            post.setTitle("High-Performance Java Persistence");
+  @Test
+  public void test() {
+    doInJPA(
+        entityManager -> {
+          Post post = new Post();
+          post.setId(1L);
+          post.setTitle("High-Performance Java Persistence");
 
-            entityManager.persist(post);
+          entityManager.persist(post);
 
-            PostComment comment1 = new PostComment();
-            comment1.setReview("Great!");
-            post.addComment(comment1);
+          PostComment comment1 = new PostComment();
+          comment1.setReview("Great!");
+          post.addComment(comment1);
 
-            PostComment comment2 = new PostComment();
-            comment2.setReview("To read");
-            post.addComment(comment2);
+          PostComment comment2 = new PostComment();
+          comment2.setReview("To read");
+          post.addComment(comment2);
 
-            PostComment comment3 = new PostComment();
-            comment3.setReview("Lorem Ipsum");
-            post.addComment(comment3);
+          PostComment comment3 = new PostComment();
+          comment3.setReview("Lorem Ipsum");
+          post.addComment(comment3);
         });
 
-        Post _post = doInJPA(entityManager -> {
-            return entityManager.createQuery("""
+    Post _post =
+        doInJPA(
+            entityManager -> {
+              return entityManager
+                  .createQuery(
+                      """
                 select p
                 from Post p
                 join fetch p.comments
                 where p.id = :id
-                """, Post.class)
-            .setParameter("id", 1L)
-            .getSingleResult();
+                """,
+                      Post.class)
+                  .setParameter("id", 1L)
+                  .getSingleResult();
+            });
+
+    List<PostComment> _comments = _post.getComments();
+
+    _post.getComments().get(0).setReview("Must read!");
+
+    doInJPA(
+        entityManager -> {
+          entityManager.merge(_post);
         });
+  }
 
-        List<PostComment> _comments = _post.getComments();
+  @Entity(name = "Post")
+  @Table(name = "post")
+  @RowId("ROWID")
+  public static class Post {
 
-        _post.getComments().get(0).setReview("Must read!");
+    @Id private Long id;
 
-        doInJPA(entityManager -> {
-            entityManager.merge(_post);
-        });
+    private String title;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostComment> comments = new ArrayList<>();
+
+    public Long getId() {
+      return id;
     }
 
-    @Entity(name = "Post")
-    @Table(name = "post")
-    @RowId( "ROWID" )
-    public static class Post {
-
-        @Id
-        private Long id;
-
-        private String title;
-
-        @OneToMany(
-            mappedBy = "post",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-        )
-        private List<PostComment> comments = new ArrayList<>();
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public List<PostComment> getComments() {
-            return comments;
-        }
-
-        public void addComment(PostComment comment) {
-            comments.add(comment);
-            comment.setPost(this);
-        }
-
-        public void removeComment(PostComment comment) {
-            comments.remove(comment);
-            comment.setPost(null);
-        }
+    public void setId(Long id) {
+      this.id = id;
     }
 
-    @Entity(name = "PostComment")
-    @Table(name = "post_comment")
-    @RowId( "ROWID" )
-    public static class PostComment {
-
-        @Id
-        @GeneratedValue
-        private Long id;
-
-        @ManyToOne(fetch = FetchType.LAZY)
-        private Post post;
-
-        private String review;
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public Post getPost() {
-            return post;
-        }
-
-        public void setPost(Post post) {
-            this.post = post;
-        }
-
-        public String getReview() {
-            return review;
-        }
-
-        public void setReview(String review) {
-            this.review = review;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof PostComment)) return false;
-            return id != null && id.equals(((PostComment) o).getId());
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode();
-        }
+    public String getTitle() {
+      return title;
     }
+
+    public void setTitle(String title) {
+      this.title = title;
+    }
+
+    public List<PostComment> getComments() {
+      return comments;
+    }
+
+    public void addComment(PostComment comment) {
+      comments.add(comment);
+      comment.setPost(this);
+    }
+
+    public void removeComment(PostComment comment) {
+      comments.remove(comment);
+      comment.setPost(null);
+    }
+  }
+
+  @Entity(name = "PostComment")
+  @Table(name = "post_comment")
+  @RowId("ROWID")
+  public static class PostComment {
+
+    @Id @GeneratedValue private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Post post;
+
+    private String review;
+
+    public Long getId() {
+      return id;
+    }
+
+    public void setId(Long id) {
+      this.id = id;
+    }
+
+    public Post getPost() {
+      return post;
+    }
+
+    public void setPost(Post post) {
+      this.post = post;
+    }
+
+    public String getReview() {
+      return review;
+    }
+
+    public void setReview(String review) {
+      this.review = review;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof PostComment)) return false;
+      return id != null && id.equals(((PostComment) o).getId());
+    }
+
+    @Override
+    public int hashCode() {
+      return getClass().hashCode();
+    }
+  }
 }

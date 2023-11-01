@@ -11,6 +11,13 @@ import com.zaxxer.hikari.HikariDataSource;
 import io.hypersistence.utils.hibernate.type.util.ClassImportIntegrator;
 import io.hypersistence.utils.spring.repository.BaseJpaRepositoryImpl;
 import jakarta.persistence.EntityManagerFactory;
+import java.sql.Connection;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.atomic.LongAdder;
+import javax.sql.DataSource;
 import net.ttddyy.dsproxy.ExecutionInfo;
 import net.ttddyy.dsproxy.QueryInfo;
 import net.ttddyy.dsproxy.listener.MethodExecutionContext;
@@ -34,143 +41,132 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.atomic.LongAdder;
-
 /**
- *
  * @author Vlad Mihalcea
  */
 @Configuration
-@ComponentScan(basePackages = {
-    "com.vladmihalcea.hpjp.spring.transaction.jpa.repository",
-    "com.vladmihalcea.hpjp.spring.transaction.jpa.service",
-})
+@ComponentScan(
+    basePackages = {
+      "com.vladmihalcea.hpjp.spring.transaction.jpa.repository",
+      "com.vladmihalcea.hpjp.spring.transaction.jpa.service",
+    })
 @EnableJpaRepositories(
     value = "com.vladmihalcea.hpjp.spring.transaction.jpa.repository",
-    repositoryBaseClass = BaseJpaRepositoryImpl.class
-)
+    repositoryBaseClass = BaseJpaRepositoryImpl.class)
 @EnableTransactionManagement
 @EnableAspectJAutoProxy
 public class JPATransactionManagerConfiguration {
 
-    public static final String DATA_SOURCE_PROXY_NAME = DataSourceProxyType.DATA_SOURCE_PROXY.name();
+  public static final String DATA_SOURCE_PROXY_NAME = DataSourceProxyType.DATA_SOURCE_PROXY.name();
 
-    @Bean
-    public Database database() {
-        return Database.POSTGRESQL;
-    }
+  @Bean
+  public Database database() {
+    return Database.POSTGRESQL;
+  }
 
-    @Bean
-    public DataSourceProvider dataSourceProvider() {
-        return database().dataSourceProvider();
-    }
+  @Bean
+  public DataSourceProvider dataSourceProvider() {
+    return database().dataSourceProvider();
+  }
 
-    @Bean(destroyMethod = "close")
-    public HikariDataSource actualDataSource() {
-        HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setMaximumPoolSize(64);
-        hikariConfig.setAutoCommit(false);
-        hikariConfig.setDataSource(dataSourceProvider().dataSource());
-        return new HikariDataSource(hikariConfig);
-    }
+  @Bean(destroyMethod = "close")
+  public HikariDataSource actualDataSource() {
+    HikariConfig hikariConfig = new HikariConfig();
+    hikariConfig.setMaximumPoolSize(64);
+    hikariConfig.setAutoCommit(false);
+    hikariConfig.setDataSource(dataSourceProvider().dataSource());
+    return new HikariDataSource(hikariConfig);
+  }
 
-    @Bean
-    public DataSource dataSource() {
-        SLF4JQueryLoggingListener loggingListener = new SLF4JQueryLoggingListener();
-        loggingListener.setQueryLogEntryCreator(new InlineQueryLogEntryCreator());
-        DataSource dataSource = ProxyDataSourceBuilder
-            .create(actualDataSource())
+  @Bean
+  public DataSource dataSource() {
+    SLF4JQueryLoggingListener loggingListener = new SLF4JQueryLoggingListener();
+    loggingListener.setQueryLogEntryCreator(new InlineQueryLogEntryCreator());
+    DataSource dataSource =
+        ProxyDataSourceBuilder.create(actualDataSource())
             .name(DATA_SOURCE_PROXY_NAME)
             .listener(loggingListener)
-            .listener(new JdbcLifecycleEventListenerAdapter() {
-                private final ThreadLocal<LongAdder> queryCountHolder = new ThreadLocal<>();
+            .listener(
+                new JdbcLifecycleEventListenerAdapter() {
+                  private final ThreadLocal<LongAdder> queryCountHolder = new ThreadLocal<>();
 
-                private final Logger LOGGER = LoggerFactory.getLogger(getClass());
+                  private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-                @Override
-                public void afterGetConnection(MethodExecutionContext executionContext) {
+                  @Override
+                  public void afterGetConnection(MethodExecutionContext executionContext) {
                     queryCountHolder.set(new LongAdder());
-                }
+                  }
 
-                @Override
-                public void beforeQuery(ExecutionInfo execInfo, List<QueryInfo> queryInfoList) {
+                  @Override
+                  public void beforeQuery(ExecutionInfo execInfo, List<QueryInfo> queryInfoList) {
                     queryCountHolder.get().increment();
-                }
+                  }
 
-                @Override
-                public void afterCommit(MethodExecutionContext executionContext) {
-                    if(queryCountHolder.get().intValue() == 0) {
-                        LOGGER.warn("Transaction didn't execute any SQL statement!");
+                  @Override
+                  public void afterCommit(MethodExecutionContext executionContext) {
+                    if (queryCountHolder.get().intValue() == 0) {
+                      LOGGER.warn("Transaction didn't execute any SQL statement!");
                     }
-                }
+                  }
 
-                @Override
-                public void afterClose(MethodExecutionContext executionContext) {
-                    if(executionContext.getTarget() instanceof Connection) {
-                        queryCountHolder.remove();
+                  @Override
+                  public void afterClose(MethodExecutionContext executionContext) {
+                    if (executionContext.getTarget() instanceof Connection) {
+                      queryCountHolder.remove();
                     }
-                }
-            })
+                  }
+                })
             .build();
-        return dataSource;
-    }
+    return dataSource;
+  }
 
-    @Bean
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
-        entityManagerFactoryBean.setPersistenceUnitName(getClass().getSimpleName());
-        entityManagerFactoryBean.setPersistenceProvider(new HibernatePersistenceProvider());
-        entityManagerFactoryBean.setDataSource(dataSource());
-        entityManagerFactoryBean.setPackagesToScan(packagesToScan());
+  @Bean
+  public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    LocalContainerEntityManagerFactoryBean entityManagerFactoryBean =
+        new LocalContainerEntityManagerFactoryBean();
+    entityManagerFactoryBean.setPersistenceUnitName(getClass().getSimpleName());
+    entityManagerFactoryBean.setPersistenceProvider(new HibernatePersistenceProvider());
+    entityManagerFactoryBean.setDataSource(dataSource());
+    entityManagerFactoryBean.setPackagesToScan(packagesToScan());
 
-        JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        entityManagerFactoryBean.setJpaVendorAdapter(vendorAdapter);
-        entityManagerFactoryBean.setJpaProperties(additionalProperties());
-        return entityManagerFactoryBean;
-    }
+    JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+    entityManagerFactoryBean.setJpaVendorAdapter(vendorAdapter);
+    entityManagerFactoryBean.setJpaProperties(additionalProperties());
+    return entityManagerFactoryBean;
+  }
 
-    @Bean
-    public JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory){
-        JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(entityManagerFactory);
-        return transactionManager;
-    }
+  @Bean
+  public JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+    JpaTransactionManager transactionManager = new JpaTransactionManager();
+    transactionManager.setEntityManagerFactory(entityManagerFactory);
+    return transactionManager;
+  }
 
-    @Bean
-    public TransactionTemplate transactionTemplate(EntityManagerFactory entityManagerFactory) {
-        return new TransactionTemplate(transactionManager(entityManagerFactory));
-    }
+  @Bean
+  public TransactionTemplate transactionTemplate(EntityManagerFactory entityManagerFactory) {
+    return new TransactionTemplate(transactionManager(entityManagerFactory));
+  }
 
-    @Bean
-    public JdbcTemplate jdbcTemplate(DataSource dataSource) {
-        return new JdbcTemplate(dataSource);
-    }
+  @Bean
+  public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+    return new JdbcTemplate(dataSource);
+  }
 
-    protected Properties additionalProperties() {
-        Properties properties = new Properties();
-        properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
-        properties.put(
-            "hibernate.session_factory.statement_inspector",
-            new LoggingStatementInspector("com.vladmihalcea.hpjp.hibernate.transaction")
-        );
-        properties.put(
-            "hibernate.integrator_provider",
-                (IntegratorProvider) () -> Collections.singletonList(
-                    new ClassImportIntegrator(Arrays.asList(PostDTO.class))
-                )
-        );
-        return properties;
-    }
+  protected Properties additionalProperties() {
+    Properties properties = new Properties();
+    properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+    properties.put(
+        "hibernate.session_factory.statement_inspector",
+        new LoggingStatementInspector("com.vladmihalcea.hpjp.hibernate.transaction"));
+    properties.put(
+        "hibernate.integrator_provider",
+        (IntegratorProvider)
+            () ->
+                Collections.singletonList(new ClassImportIntegrator(Arrays.asList(PostDTO.class))));
+    return properties;
+  }
 
-    protected String[] packagesToScan() {
-        return new String[]{
-            "com.vladmihalcea.hpjp.hibernate.transaction.forum"
-        };
-    }
+  protected String[] packagesToScan() {
+    return new String[] {"com.vladmihalcea.hpjp.hibernate.transaction.forum"};
+  }
 }

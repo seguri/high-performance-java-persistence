@@ -7,13 +7,11 @@ import java.util.Properties;
  */
 public class StatementInspectorSqlCommentTest extends SQLCommentTest {
 
-    @Override
-    protected void additionalProperties(Properties properties) {
-        super.additionalProperties(properties);
-        properties.put(
-            "hibernate.session_factory.statement_inspector",
-            SQLCommentStatementInspector.class.getName()
-        );
-    }
-
+  @Override
+  protected void additionalProperties(Properties properties) {
+    super.additionalProperties(properties);
+    properties.put(
+        "hibernate.session_factory.statement_inspector",
+        SQLCommentStatementInspector.class.getName());
+  }
 }

@@ -1,7 +1,6 @@
 package com.vladmihalcea.hpjp.spring.transaction.jta.dao;
 
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Tag;
-
 import java.util.List;
 
 /**
@@ -9,5 +8,5 @@ import java.util.List;
  */
 public interface TagDAO extends GenericDAO<Tag, Long> {
 
-    List<Tag> findByName(String... tags);
+  List<Tag> findByName(String... tags);
 }

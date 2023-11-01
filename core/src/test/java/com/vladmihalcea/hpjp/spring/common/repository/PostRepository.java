@@ -10,5 +10,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostRepository extends BaseJpaRepository<Post, Long> {
 
-    Post findBySlug(String slug);
+  Post findBySlug(String slug);
 }

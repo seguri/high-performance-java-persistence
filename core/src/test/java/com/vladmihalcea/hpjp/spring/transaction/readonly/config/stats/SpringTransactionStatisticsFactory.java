@@ -9,8 +9,8 @@ import org.hibernate.stat.spi.StatisticsImplementor;
  */
 public class SpringTransactionStatisticsFactory implements StatisticsFactory {
 
-    @Override
-    public StatisticsImplementor buildStatistics(SessionFactoryImplementor sessionFactory) {
-        return new SpringTransactionStatistics(sessionFactory);
-    }
+  @Override
+  public StatisticsImplementor buildStatistics(SessionFactoryImplementor sessionFactory) {
+    return new SpringTransactionStatistics(sessionFactory);
+  }
 }

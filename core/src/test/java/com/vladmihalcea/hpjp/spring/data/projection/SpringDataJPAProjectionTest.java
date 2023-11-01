@@ -1,5 +1,7 @@
 package com.vladmihalcea.hpjp.spring.data.projection;
 
+import static org.junit.Assert.*;
+
 import com.vladmihalcea.hpjp.hibernate.query.dto.projection.transformer.PostDTO;
 import com.vladmihalcea.hpjp.spring.data.projection.config.SpringDataJPAProjectionConfiguration;
 import com.vladmihalcea.hpjp.spring.data.projection.domain.Post;
@@ -11,6 +13,9 @@ import com.vladmihalcea.hpjp.spring.data.projection.repository.PostRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.LongStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,12 +29,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.LongStream;
-
-import static org.junit.Assert.*;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -38,59 +37,65 @@ import static org.junit.Assert.*;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringDataJPAProjectionTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    public static final int POST_COUNT = 50;
-    public static final int POST_COMMENT_COUNT = 5;
+  public static final int POST_COUNT = 50;
+  public static final int POST_COMMENT_COUNT = 5;
 
-    @Before
-    public void init() {
-        try {
-            transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
+  @Before
+  public void init() {
+    try {
+      transactionTemplate.execute(
+          (TransactionCallback<Void>)
+              transactionStatus -> {
                 final AtomicLong commentId = new AtomicLong(0);
 
-                LongStream.rangeClosed(1, POST_COUNT).forEach(i -> {
-                    Post post = new Post()
-                        .setId(i)
-                        .setTitle(String.format("High-Performance Java Persistence, Chapter nr. %d", i));
+                LongStream.rangeClosed(1, POST_COUNT)
+                    .forEach(
+                        i -> {
+                          Post post =
+                              new Post()
+                                  .setId(i)
+                                  .setTitle(
+                                      String.format(
+                                          "High-Performance Java Persistence, Chapter nr. %d", i));
 
-                    LongStream.rangeClosed(1, POST_COMMENT_COUNT).forEach(j -> {
-                        post.addComment(
-                            new PostComment()
-                                .setId(commentId.incrementAndGet())
-                                .setReview(
-                                    String.format("Good review nr. %d", commentId.get())
-                                )
-                        );
-
-                    });
-                    entityManager.persist(post);
-                });
+                          LongStream.rangeClosed(1, POST_COMMENT_COUNT)
+                              .forEach(
+                                  j -> {
+                                    post.addComment(
+                                        new PostComment()
+                                            .setId(commentId.incrementAndGet())
+                                            .setReview(
+                                                String.format(
+                                                    "Good review nr. %d", commentId.get())));
+                                  });
+                          entityManager.persist(post);
+                        });
 
                 return null;
-            });
-        } catch (TransactionException e) {
-            LOGGER.error("Failure", e);
-        }
+              });
+    } catch (TransactionException e) {
+      LOGGER.error("Failure", e);
     }
+  }
 
-    @Test
-    public void test() {
-        String titleToken = "High-Performance Java Persistence%";
+  @Test
+  public void test() {
+    String titleToken = "High-Performance Java Persistence%";
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            {
-                List<Tuple> commentTuples = postRepository
-                    .findAllCommentTuplesByPostTitle(titleToken);
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              {
+                List<Tuple> commentTuples =
+                    postRepository.findAllCommentTuplesByPostTitle(titleToken);
 
                 assertFalse(commentTuples.isEmpty());
 
@@ -100,11 +105,11 @@ public class SpringDataJPAProjectionTest {
 
                 assertEquals(1L, id);
                 assertTrue(title.contains("Chapter nr. 1"));
-            }
+              }
 
-            {
-                List<PostCommentSummary> commentSummaries = postRepository
-                    .findAllCommentSummariesByPostTitle(titleToken);
+              {
+                List<PostCommentSummary> commentSummaries =
+                    postRepository.findAllCommentSummariesByPostTitle(titleToken);
 
                 assertFalse(commentSummaries.isEmpty());
 
@@ -114,10 +119,11 @@ public class SpringDataJPAProjectionTest {
 
                 assertEquals(1L, id.longValue());
                 assertTrue(title.contains("Chapter nr. 1"));
-            }
+              }
 
-            {
-                List<PostCommentDTO> commentDTOs = postRepository.findCommentDTOByPostTitle(titleToken);
+              {
+                List<PostCommentDTO> commentDTOs =
+                    postRepository.findCommentDTOByPostTitle(titleToken);
 
                 assertFalse(commentDTOs.isEmpty());
 
@@ -129,15 +135,12 @@ public class SpringDataJPAProjectionTest {
                 assertEquals(
                     commentDTO,
                     new PostCommentDTO(
-                        commentDTO.getId(),
-                        commentDTO.getTitle(),
-                        commentDTO.getReview()
-                    )
-                );
-            }
+                        commentDTO.getId(), commentDTO.getTitle(), commentDTO.getReview()));
+              }
 
-            {
-                List<PostCommentRecord> commentRecords = postRepository.findCommentRecordByPostTitle(titleToken);
+              {
+                List<PostCommentRecord> commentRecords =
+                    postRepository.findCommentRecordByPostTitle(titleToken);
 
                 assertFalse(commentRecords.isEmpty());
 
@@ -149,24 +152,19 @@ public class SpringDataJPAProjectionTest {
                 assertEquals(
                     commentRecord,
                     new PostCommentRecord(
-                        commentRecord.id(),
-                        commentRecord.title(),
-                        commentRecord.review()
-                    )
-                );
-            }
+                        commentRecord.id(), commentRecord.title(), commentRecord.review()));
+              }
 
-            List<PostDTO> postDTOs = postRepository.findPostDTOByPostTitle(titleToken);
+              List<PostDTO> postDTOs = postRepository.findPostDTOByPostTitle(titleToken);
 
-            assertEquals(POST_COUNT, postDTOs.size());
+              assertEquals(POST_COUNT, postDTOs.size());
 
-            PostDTO postDTO = postDTOs.get(0);
-            assertEquals(Long.valueOf(1), postDTO.getId());
-            assertTrue(postDTO.getTitle().contains("Chapter nr. 1"));
-            assertEquals(POST_COMMENT_COUNT, postDTO.getComments().size());
+              PostDTO postDTO = postDTOs.get(0);
+              assertEquals(Long.valueOf(1), postDTO.getId());
+              assertTrue(postDTO.getTitle().contains("Chapter nr. 1"));
+              assertEquals(POST_COMMENT_COUNT, postDTO.getComments().size());
 
-            return null;
-        });
-    }
+              return null;
+            });
+  }
 }
-

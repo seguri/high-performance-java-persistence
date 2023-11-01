@@ -1,7 +1,6 @@
 package com.vladmihalcea.hpjp.hibernate.fetching.pagination;
 
 import com.vladmihalcea.hpjp.hibernate.identifier.Identifiable;
-
 import jakarta.persistence.*;
 import java.sql.Timestamp;
 import java.util.Date;
@@ -13,50 +12,48 @@ import java.util.Date;
 @Table(name = "post_comment")
 public class PostComment implements Identifiable<Long> {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    @ManyToOne
-    private Post post;
+  @ManyToOne private Post post;
 
-    private String review;
+  private String review;
 
-    @Column(name = "created_on")
-    private Timestamp createdOn;
+  @Column(name = "created_on")
+  private Timestamp createdOn;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public PostComment setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public PostComment setId(Long id) {
+    this.id = id;
+    return this;
+  }
 
-    public Post getPost() {
-        return post;
-    }
+  public Post getPost() {
+    return post;
+  }
 
-    public PostComment setPost(Post post) {
-        this.post = post;
-        return this;
-    }
+  public PostComment setPost(Post post) {
+    this.post = post;
+    return this;
+  }
 
-    public String getReview() {
-        return review;
-    }
+  public String getReview() {
+    return review;
+  }
 
-    public PostComment setReview(String review) {
-        this.review = review;
-        return this;
-    }
+  public PostComment setReview(String review) {
+    this.review = review;
+    return this;
+  }
 
-    public Date getCreatedOn() {
-        return createdOn;
-    }
+  public Date getCreatedOn() {
+    return createdOn;
+  }
 
-    public PostComment setCreatedOn(Timestamp createdOn) {
-        this.createdOn = createdOn;
-        return this;
-    }
+  public PostComment setCreatedOn(Timestamp createdOn) {
+    this.createdOn = createdOn;
+    return this;
+  }
 }

@@ -10,25 +10,21 @@ import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
 public class CascadeDeleteEventListenerIntegrator implements Integrator {
 
-    public static final CascadeDeleteEventListenerIntegrator INSTANCE =
-        new CascadeDeleteEventListenerIntegrator();
+  public static final CascadeDeleteEventListenerIntegrator INSTANCE =
+      new CascadeDeleteEventListenerIntegrator();
 
-    @Override
-    public void integrate(Metadata metadata, BootstrapContext bootstrapContext, SessionFactoryImplementor sessionFactory) {
-        final EventListenerRegistry eventListenerRegistry = sessionFactory
-            .getServiceRegistry()
-            .getService(EventListenerRegistry.class);
+  @Override
+  public void integrate(
+      Metadata metadata,
+      BootstrapContext bootstrapContext,
+      SessionFactoryImplementor sessionFactory) {
+    final EventListenerRegistry eventListenerRegistry =
+        sessionFactory.getServiceRegistry().getService(EventListenerRegistry.class);
 
-        eventListenerRegistry.prependListeners(
-            EventType.DELETE,
-            CascadeDeleteEventListener.INSTANCE
-        );
-    }
+    eventListenerRegistry.prependListeners(EventType.DELETE, CascadeDeleteEventListener.INSTANCE);
+  }
 
-    @Override
-    public void disintegrate(
-        SessionFactoryImplementor sessionFactory,
-        SessionFactoryServiceRegistry serviceRegistry) {
-    }
+  @Override
+  public void disintegrate(
+      SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {}
 }
-

@@ -1,5 +1,8 @@
 package com.vladmihalcea.hpjp.spring.blaze;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import com.vladmihalcea.hpjp.spring.blaze.config.SpringBlazePersistenceConfiguration;
 import com.vladmihalcea.hpjp.spring.blaze.domain.*;
 import com.vladmihalcea.hpjp.spring.blaze.domain.views.PostCommentView;
@@ -7,6 +10,8 @@ import com.vladmihalcea.hpjp.spring.blaze.domain.views.PostWithCommentsAndTagsVi
 import com.vladmihalcea.hpjp.spring.blaze.service.ForumService;
 import com.vladmihalcea.hpjp.util.exception.ExceptionUtil;
 import jakarta.persistence.EntityManager;
+import java.util.ArrayList;
+import java.util.List;
 import org.hibernate.loader.MultipleBagFetchException;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,12 +26,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -35,35 +34,28 @@ import static org.junit.Assert.fail;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringBlazePersistenceMultisetTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    public static final int POST_COUNT = 50;
-    public static final int POST_COMMENT_COUNT = 20;
-    public static final int TAG_COUNT = 10;
-    public static final int VOTE_COUNT = 5;
+  public static final int POST_COUNT = 50;
+  public static final int POST_COMMENT_COUNT = 20;
+  public static final int TAG_COUNT = 10;
+  public static final int VOTE_COUNT = 5;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private EntityManager entityManager;
+  @Autowired private EntityManager entityManager;
 
-    @Autowired
-    private ForumService forumService;
+  @Autowired private ForumService forumService;
 
-    @Before
-    public void init() {
-        try {
-            transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-                User alice = new User()
-                    .setId(1L)
-                    .setFirstName("Alice")
-                    .setLastName("Smith");
+  @Before
+  public void init() {
+    try {
+      transactionTemplate.execute(
+          (TransactionCallback<Void>)
+              transactionStatus -> {
+                User alice = new User().setId(1L).setFirstName("Alice").setLastName("Smith");
 
-                User bob = new User()
-                    .setId(2L)
-                    .setFirstName("Bob")
-                    .setLastName("Johnson");
+                User bob = new User().setId(2L).setFirstName("Bob").setLastName("Johnson");
 
                 entityManager.persist(alice);
                 entityManager.persist(bob);
@@ -71,60 +63,57 @@ public class SpringBlazePersistenceMultisetTest {
                 List<Tag> tags = new ArrayList<>();
 
                 for (long i = 1; i <= TAG_COUNT; i++) {
-                    Tag tag = new Tag()
-                        .setId(i)
-                        .setName(String.format("Tag nr. %d", i));
+                  Tag tag = new Tag().setId(i).setName(String.format("Tag nr. %d", i));
 
-                    entityManager.persist(tag);
-                    tags.add(tag);
+                  entityManager.persist(tag);
+                  tags.add(tag);
                 }
 
                 long commentId = 0;
                 long voteId = 0;
 
                 for (long postId = 1; postId <= POST_COUNT; postId++) {
-                    Post post = new Post()
-                        .setId(postId)
-                        .setTitle(String.format("Post nr. %d", postId));
+                  Post post =
+                      new Post().setId(postId).setTitle(String.format("Post nr. %d", postId));
 
+                  for (long i = 0; i < POST_COMMENT_COUNT; i++) {
+                    PostComment comment =
+                        new PostComment().setId(++commentId).setReview("Excellent!");
 
-                    for (long i = 0; i < POST_COMMENT_COUNT; i++) {
-                        PostComment comment = new PostComment()
-                            .setId(++commentId)
-                            .setReview("Excellent!");
-
-                        for (int j = 0; j < VOTE_COUNT; j++) {
-                            comment.addVote(
-                                new UserVote()
-                                    .setId(++voteId)
-                                    .setScore(Math.random() > 0.5 ? 1 : -1)
-                                    .setUser(Math.random() > 0.5 ? alice : bob)
-                            );
-                        }
-
-                        post.addComment(comment);
-
+                    for (int j = 0; j < VOTE_COUNT; j++) {
+                      comment.addVote(
+                          new UserVote()
+                              .setId(++voteId)
+                              .setScore(Math.random() > 0.5 ? 1 : -1)
+                              .setUser(Math.random() > 0.5 ? alice : bob));
                     }
 
-                    for (int i = 0; i < TAG_COUNT; i++) {
-                        post.getTags().add(tags.get(i));
-                    }
+                    post.addComment(comment);
+                  }
 
-                    entityManager.persist(post);
+                  for (int i = 0; i < TAG_COUNT; i++) {
+                    post.getTags().add(tags.get(i));
+                  }
+
+                  entityManager.persist(post);
                 }
 
                 return null;
-            });
-        } catch (TransactionException e) {
-            LOGGER.error("Failure", e);
-        }
+              });
+    } catch (TransactionException e) {
+      LOGGER.error("Failure", e);
     }
+  }
 
-    @Test
-    public void testWithCartesianProduct() {
-        transactionTemplate.execute(transactionStatus -> {
-            try {
-                List<Post> posts = entityManager.createQuery("""
+  @Test
+  public void testWithCartesianProduct() {
+    transactionTemplate.execute(
+        transactionStatus -> {
+          try {
+            List<Post> posts =
+                entityManager
+                    .createQuery(
+                        """
                     select p
                     from Post p
                     left join fetch p.tags t
@@ -132,53 +121,49 @@ public class SpringBlazePersistenceMultisetTest {
                     left join fetch pc.votes v
                     left join fetch v.user u
                     where p.id between :minId and :maxId
-                    """, Post.class)
-                .setParameter("minId", 1L)
-                .setParameter("maxId", 50L)
-                .getResultList();
+                    """,
+                        Post.class)
+                    .setParameter("minId", 1L)
+                    .setParameter("maxId", 50L)
+                    .getResultList();
 
-                fail("Should have thrown MultipleBagFetchException");
-            } catch (IllegalArgumentException e) {
-                LOGGER.info("Expected", e);
-                assertEquals(MultipleBagFetchException.class, ExceptionUtil.rootCause(e).getClass());
-            }
-            return null;
+            fail("Should have thrown MultipleBagFetchException");
+          } catch (IllegalArgumentException e) {
+            LOGGER.info("Expected", e);
+            assertEquals(MultipleBagFetchException.class, ExceptionUtil.rootCause(e).getClass());
+          }
+          return null;
         });
+  }
+
+  @Test
+  public void testWithSuccessiveJoinFetch() {
+    List<Post> posts = forumService.findWithCommentsAndTagsByIds(1L, 50L);
+
+    assertEquals(POST_COUNT, posts.size());
+
+    for (Post post : posts) {
+      assertEquals(POST_COMMENT_COUNT, post.getComments().size());
+      for (PostComment comment : post.getComments()) {
+        assertEquals(VOTE_COUNT, comment.getVotes().size());
+      }
+      assertEquals(TAG_COUNT, post.getTags().size());
     }
+  }
 
-    @Test
-    public void testWithSuccessiveJoinFetch() {
-        List<Post> posts = forumService.findWithCommentsAndTagsByIds(
-            1L, 50L
-        );
+  @Test
+  public void testWithMultiset() {
+    List<PostWithCommentsAndTagsView> posts =
+        forumService.findPostWithCommentsAndTagsViewByIds(1L, 50L);
 
-        assertEquals(POST_COUNT, posts.size());
+    assertEquals(POST_COUNT, posts.size());
 
-        for (Post post : posts) {
-            assertEquals(POST_COMMENT_COUNT, post.getComments().size());
-            for(PostComment comment : post.getComments()) {
-                assertEquals(VOTE_COUNT, comment.getVotes().size());
-            }
-            assertEquals(TAG_COUNT, post.getTags().size());
-        }
+    for (PostWithCommentsAndTagsView post : posts) {
+      assertEquals(POST_COMMENT_COUNT, post.getComments().size());
+      for (PostCommentView comment : post.getComments()) {
+        assertEquals(VOTE_COUNT, comment.getVotes().size());
+      }
+      assertEquals(TAG_COUNT, post.getTags().size());
     }
-
-    @Test
-    public void testWithMultiset() {
-        List<PostWithCommentsAndTagsView> posts = forumService.findPostWithCommentsAndTagsViewByIds(
-            1L, 50L
-        );
-
-        assertEquals(POST_COUNT, posts.size());
-
-        for (PostWithCommentsAndTagsView post : posts) {
-            assertEquals(POST_COMMENT_COUNT, post.getComments().size());
-            for(PostCommentView comment : post.getComments()) {
-                assertEquals(VOTE_COUNT, comment.getVotes().size());
-            }
-            assertEquals(TAG_COUNT, post.getTags().size());
-        }
-    }
-
+  }
 }
-

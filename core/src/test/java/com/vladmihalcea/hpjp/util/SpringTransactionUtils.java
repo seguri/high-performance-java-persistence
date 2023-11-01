@@ -11,23 +11,20 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public final class SpringTransactionUtils {
 
-    private SpringTransactionUtils() {
-        throw new UnsupportedOperationException("SpringTransactionUtils is not instantiable!");
-    }
+  private SpringTransactionUtils() {
+    throw new UnsupportedOperationException("SpringTransactionUtils is not instantiable!");
+  }
 
-    /**
-     * Return the current {@link EntityManager} instance bound to the current running
-     * transaction.
-     *
-     * @return current {@link EntityManager}
-     */
-    public static EntityManager currentEntityManager() {
-        return TransactionSynchronizationManager.getResourceMap()
-            .values()
-            .stream()
-            .filter(EntityManagerHolder.class::isInstance)
-            .map(eh -> ((EntityManagerHolder) eh).getEntityManager())
-            .findAny()
-            .orElse(null);
-    }
+  /**
+   * Return the current {@link EntityManager} instance bound to the current running transaction.
+   *
+   * @return current {@link EntityManager}
+   */
+  public static EntityManager currentEntityManager() {
+    return TransactionSynchronizationManager.getResourceMap().values().stream()
+        .filter(EntityManagerHolder.class::isInstance)
+        .map(eh -> ((EntityManagerHolder) eh).getEntityManager())
+        .findAny()
+        .orElse(null);
+  }
 }

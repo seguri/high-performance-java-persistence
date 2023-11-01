@@ -5,20 +5,20 @@ package com.vladmihalcea.hpjp.hibernate.query.dto.mixed;
  */
 public class PersonAndCountryDTO {
 
-	private final Person person;
+  private final Person person;
 
-	private final String country;
+  private final String country;
 
-	public PersonAndCountryDTO(Person person, String country) {
-		this.person = person;
-		this.country = country;
-	}
+  public PersonAndCountryDTO(Person person, String country) {
+    this.person = person;
+    this.country = country;
+  }
 
-	public Person getPerson() {
-		return person;
-	}
+  public Person getPerson() {
+    return person;
+  }
 
-	public String getCountry() {
-		return country;
-	}
+  public String getCountry() {
+    return country;
+  }
 }

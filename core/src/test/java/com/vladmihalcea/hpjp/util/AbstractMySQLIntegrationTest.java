@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.util.providers.Database;
  */
 public abstract class AbstractMySQLIntegrationTest extends AbstractTest {
 
-    @Override
-    protected Database database() {
-        return Database.MYSQL;
-    }
+  @Override
+  protected Database database() {
+    return Database.MYSQL;
+  }
 }

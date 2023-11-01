@@ -29,8 +29,7 @@ public class TabVersion implements Serializable {
   @JoinColumn(name = "tab_source", nullable = false)
   private TabSource tabSource;
 
-  public TabVersion() {
-  }
+  public TabVersion() {}
 
   public long getTabKey() {
     return this.tabKey;
@@ -85,5 +84,4 @@ public class TabVersion implements Serializable {
   public void setTabSource(TabSource tabSource) {
     this.tabSource = tabSource;
   }
-
 }

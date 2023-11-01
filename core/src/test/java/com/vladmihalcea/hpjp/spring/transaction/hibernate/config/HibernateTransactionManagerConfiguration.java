@@ -9,6 +9,9 @@ import com.vladmihalcea.hpjp.util.providers.Database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.hypersistence.utils.hibernate.type.util.ClassImportIntegrator;
+import java.util.Arrays;
+import java.util.Properties;
+import javax.sql.DataSource;
 import net.ttddyy.dsproxy.listener.logging.SLF4JQueryLoggingListener;
 import net.ttddyy.dsproxy.support.ProxyDataSourceBuilder;
 import org.hibernate.SessionFactory;
@@ -21,12 +24,7 @@ import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import javax.sql.DataSource;
-import java.util.Arrays;
-import java.util.Properties;
-
 /**
- *
  * @author Vlad Mihalcea
  */
 @Configuration
@@ -35,76 +33,74 @@ import java.util.Properties;
 @EnableAspectJAutoProxy
 public class HibernateTransactionManagerConfiguration {
 
-    public static final String DATA_SOURCE_PROXY_NAME = DataSourceProxyType.DATA_SOURCE_PROXY.name();
+  public static final String DATA_SOURCE_PROXY_NAME = DataSourceProxyType.DATA_SOURCE_PROXY.name();
 
-    @Bean
-    public Database database() {
-        return Database.POSTGRESQL;
-    }
+  @Bean
+  public Database database() {
+    return Database.POSTGRESQL;
+  }
 
-    @Bean
-    public DataSourceProvider dataSourceProvider() {
-        return database().dataSourceProvider();
-    }
+  @Bean
+  public DataSourceProvider dataSourceProvider() {
+    return database().dataSourceProvider();
+  }
 
-    @Bean(destroyMethod = "close")
-    public HikariDataSource actualDataSource() {
-        HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setMaximumPoolSize(64);
-        hikariConfig.setAutoCommit(false);
-        hikariConfig.setDataSource(dataSourceProvider().dataSource());
-        return new HikariDataSource(hikariConfig);
-    }
+  @Bean(destroyMethod = "close")
+  public HikariDataSource actualDataSource() {
+    HikariConfig hikariConfig = new HikariConfig();
+    hikariConfig.setMaximumPoolSize(64);
+    hikariConfig.setAutoCommit(false);
+    hikariConfig.setDataSource(dataSourceProvider().dataSource());
+    return new HikariDataSource(hikariConfig);
+  }
 
-    @Bean
-    public DataSource dataSource() {
-        SLF4JQueryLoggingListener loggingListener = new SLF4JQueryLoggingListener();
-        loggingListener.setQueryLogEntryCreator(new InlineQueryLogEntryCreator());
-        DataSource dataSource = ProxyDataSourceBuilder
-            .create(actualDataSource())
+  @Bean
+  public DataSource dataSource() {
+    SLF4JQueryLoggingListener loggingListener = new SLF4JQueryLoggingListener();
+    loggingListener.setQueryLogEntryCreator(new InlineQueryLogEntryCreator());
+    DataSource dataSource =
+        ProxyDataSourceBuilder.create(actualDataSource())
             .name(DATA_SOURCE_PROXY_NAME)
             .listener(loggingListener)
             .build();
-        return dataSource;
-    }
+    return dataSource;
+  }
 
-    @Bean
-    public LocalSessionFactoryBean sessionFactory() {
-        LocalSessionFactoryBean sessionFactoryBean = new LocalSessionFactoryBean();
-        sessionFactoryBean.setDataSource(dataSource());
-        sessionFactoryBean.setPackagesToScan(packagesToScan());
-        sessionFactoryBean.setHibernateProperties(additionalProperties());
-        sessionFactoryBean.setHibernateIntegrators(new ClassImportIntegrator(Arrays.asList(PostDTO.class)));
-        return sessionFactoryBean;
-    }
+  @Bean
+  public LocalSessionFactoryBean sessionFactory() {
+    LocalSessionFactoryBean sessionFactoryBean = new LocalSessionFactoryBean();
+    sessionFactoryBean.setDataSource(dataSource());
+    sessionFactoryBean.setPackagesToScan(packagesToScan());
+    sessionFactoryBean.setHibernateProperties(additionalProperties());
+    sessionFactoryBean.setHibernateIntegrators(
+        new ClassImportIntegrator(Arrays.asList(PostDTO.class)));
+    return sessionFactoryBean;
+  }
 
-    @Bean
-    public HibernateTransactionManager transactionManager(SessionFactory sessionFactory){
-        //HibernateTransactionManager transactionManager = new HibernateTransactionManager();
-        HibernateTransactionManager transactionManager = new MonitoringHibernateTransactionManager();
-        transactionManager.setSessionFactory(sessionFactory);
-        return transactionManager;
-    }
+  @Bean
+  public HibernateTransactionManager transactionManager(SessionFactory sessionFactory) {
+    // HibernateTransactionManager transactionManager = new HibernateTransactionManager();
+    HibernateTransactionManager transactionManager = new MonitoringHibernateTransactionManager();
+    transactionManager.setSessionFactory(sessionFactory);
+    return transactionManager;
+  }
 
-    @Bean
-    public TransactionTemplate transactionTemplate(SessionFactory sessionFactory) {
-        return new TransactionTemplate(transactionManager(sessionFactory));
-    }
+  @Bean
+  public TransactionTemplate transactionTemplate(SessionFactory sessionFactory) {
+    return new TransactionTemplate(transactionManager(sessionFactory));
+  }
 
-    protected Properties additionalProperties() {
-        Properties properties = new Properties();
-        
-        properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
-        properties.put(
-            "hibernate.session_factory.statement_inspector",
-            new LoggingStatementInspector("com.vladmihalcea.hpjp.hibernate.transaction")
-        );
-        return properties;
-    }
+  protected Properties additionalProperties() {
+    Properties properties = new Properties();
 
-    protected String[] packagesToScan() {
-        return new String[]{
-            "com.vladmihalcea.hpjp.hibernate.transaction.forum"
-        };
-    }
+    properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+    properties.put(
+        "hibernate.session_factory.statement_inspector",
+        new LoggingStatementInspector("com.vladmihalcea.hpjp.hibernate.transaction"));
+    return properties;
+  }
+
+  protected String[] packagesToScan() {
+    return new String[] {"com.vladmihalcea.hpjp.hibernate.transaction.forum"};
+  }
 }

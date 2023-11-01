@@ -11,14 +11,14 @@ import jakarta.persistence.Table;
 @Table(name = "email_subscriber")
 public class EmailSubscriber extends Subscriber {
 
-    @Column(name = "email_address", nullable = false)
-    private String emailAddress;
+  @Column(name = "email_address", nullable = false)
+  private String emailAddress;
 
-    public String getEmailAddress() {
-        return emailAddress;
-    }
+  public String getEmailAddress() {
+    return emailAddress;
+  }
 
-    public void setEmailAddress(String emailAddress) {
-        this.emailAddress = emailAddress;
-    }
+  public void setEmailAddress(String emailAddress) {
+    this.emailAddress = emailAddress;
+  }
 }

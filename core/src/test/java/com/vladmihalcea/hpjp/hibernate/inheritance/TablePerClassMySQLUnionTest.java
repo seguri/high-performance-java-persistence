@@ -9,20 +9,20 @@ import org.hibernate.dialect.MySQL8Dialect;
  */
 public class TablePerClassMySQLUnionTest extends TablePerClassTest {
 
-    @Override
-    protected DataSourceProvider dataSourceProvider() {
-        return new MySQLDataSourceProvider() {
-            @Override
-            public String hibernateDialect() {
-                return MySQLUnionSupportDialect.class.getName();
-            }
-        };
-    }
+  @Override
+  protected DataSourceProvider dataSourceProvider() {
+    return new MySQLDataSourceProvider() {
+      @Override
+      public String hibernateDialect() {
+        return MySQLUnionSupportDialect.class.getName();
+      }
+    };
+  }
 
-    public static class MySQLUnionSupportDialect extends MySQL8Dialect {
-        @Override
-        public boolean supportsUnionAll() {
-            return false;
-        }
+  public static class MySQLUnionSupportDialect extends MySQL8Dialect {
+    @Override
+    public boolean supportsUnionAll() {
+      return false;
     }
+  }
 }

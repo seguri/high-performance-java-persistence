@@ -11,19 +11,18 @@ import org.hibernate.tool.schema.extract.spi.SequenceInformationExtractor;
  */
 public class FastOracleDialect extends OracleDialect {
 
-    public FastOracleDialect() {
-    }
+  public FastOracleDialect() {}
 
-    public FastOracleDialect(DatabaseVersion version) {
-        super(version);
-    }
+  public FastOracleDialect(DatabaseVersion version) {
+    super(version);
+  }
 
-    public FastOracleDialect(DialectResolutionInfo info) {
-        super(info);
-    }
+  public FastOracleDialect(DialectResolutionInfo info) {
+    super(info);
+  }
 
-    @Override
-    public SequenceInformationExtractor getSequenceInformationExtractor() {
-        return SequenceInformationExtractorNoOpImpl.INSTANCE;
-    }
+  @Override
+  public SequenceInformationExtractor getSequenceInformationExtractor() {
+    return SequenceInformationExtractorNoOpImpl.INSTANCE;
+  }
 }

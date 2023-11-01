@@ -1,7 +1,6 @@
 package com.vladmihalcea.hpjp.util.transaction;
 
 import java.util.function.Function;
-
 import org.hibernate.Session;
 
 /**
@@ -9,11 +8,7 @@ import org.hibernate.Session;
  */
 @FunctionalInterface
 public interface HibernateTransactionFunction<T> extends Function<Session, T> {
-	default void beforeTransactionCompletion() {
+  default void beforeTransactionCompletion() {}
 
-	}
-
-	default void afterTransactionCompletion() {
-
-	}
+  default void afterTransactionCompletion() {}
 }

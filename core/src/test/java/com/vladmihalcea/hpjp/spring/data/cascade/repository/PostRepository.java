@@ -2,11 +2,10 @@ package com.vladmihalcea.hpjp.spring.data.cascade.repository;
 
 import com.vladmihalcea.hpjp.spring.data.cascade.domain.Post;
 import io.hypersistence.utils.spring.repository.BaseJpaRepository;
+import java.util.List;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 /**
  * @author Vlad Mihalcea
@@ -14,21 +13,23 @@ import java.util.List;
 @Repository
 public interface PostRepository extends BaseJpaRepository<Post, Long> {
 
-    @Query("""
+  @Query(
+      """
         select p
         from Post p
         left join fetch p.details
         left join fetch p.comments
         where p.title like :titlePrefix
         """)
-    List<Post> findAllByTitleLike(@Param("titlePrefix") String titlePrefix);
+  List<Post> findAllByTitleLike(@Param("titlePrefix") String titlePrefix);
 
-    @Query("""
+  @Query(
+      """
         select p
         from Post p
         left join fetch p.details
         left join fetch p.comments
         where p.id = :id
         """)
-    Post findByIdWithComments(@Param("id") Long id);
+  Post findByIdWithComments(@Param("id") Long id);
 }

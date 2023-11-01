@@ -10,63 +10,62 @@ import java.util.Date;
 @Table(name = "post_comment")
 public class PostComment {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "post_id")
-    private Post post;
+  @ManyToOne
+  @JoinColumn(name = "post_id")
+  private Post post;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "created_on")
-    private Date createdOn = new Date();
+  @Temporal(TemporalType.TIMESTAMP)
+  @Column(name = "created_on")
+  private Date createdOn = new Date();
 
-    private String review;
+  private String review;
 
-    private int score;
+  private int score;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public PostComment setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public PostComment setId(Long id) {
+    this.id = id;
+    return this;
+  }
 
-    public Post getPost() {
-        return post;
-    }
+  public Post getPost() {
+    return post;
+  }
 
-    public PostComment setPost(Post post) {
-        this.post = post;
-        return this;
-    }
+  public PostComment setPost(Post post) {
+    this.post = post;
+    return this;
+  }
 
-    public String getReview() {
-        return review;
-    }
+  public String getReview() {
+    return review;
+  }
 
-    public PostComment setReview(String review) {
-        this.review = review;
-        return this;
-    }
+  public PostComment setReview(String review) {
+    this.review = review;
+    return this;
+  }
 
-    public Date getCreatedOn() {
-        return createdOn;
-    }
+  public Date getCreatedOn() {
+    return createdOn;
+  }
 
-    public PostComment setCreatedOn(Date createdOn) {
-        this.createdOn = createdOn;
-        return this;
-    }
+  public PostComment setCreatedOn(Date createdOn) {
+    this.createdOn = createdOn;
+    return this;
+  }
 
-    public int getScore() {
-        return score;
-    }
+  public int getScore() {
+    return score;
+  }
 
-    public PostComment setScore(int score) {
-        this.score = score;
-        return this;
-    }
+  public PostComment setScore(int score) {
+    this.score = score;
+    return this;
+  }
 }

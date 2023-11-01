@@ -11,37 +11,36 @@ import jakarta.persistence.Table;
 @Table(name = "book")
 public class Book {
 
-    @Id
-    private Long isbn;
+  @Id private Long isbn;
 
-    private String title;
+  private String title;
 
-    private String author;
+  private String author;
 
-    public Long getIsbn() {
-        return isbn;
-    }
+  public Long getIsbn() {
+    return isbn;
+  }
 
-    public Book setIsbn(Long isbn) {
-        this.isbn = isbn;
-        return this;
-    }
+  public Book setIsbn(Long isbn) {
+    this.isbn = isbn;
+    return this;
+  }
 
-    public String getTitle() {
-        return title;
-    }
+  public String getTitle() {
+    return title;
+  }
 
-    public Book setTitle(String title) {
-        this.title = title;
-        return this;
-    }
+  public Book setTitle(String title) {
+    this.title = title;
+    return this;
+  }
 
-    public String getAuthor() {
-        return author;
-    }
+  public String getAuthor() {
+    return author;
+  }
 
-    public Book setAuthor(String author) {
-        this.author = author;
-        return this;
-    }
+  public Book setAuthor(String author) {
+    this.author = author;
+    return this;
+  }
 }

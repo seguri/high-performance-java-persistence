@@ -20,6 +20,13 @@ import com.vladmihalcea.hpjp.util.providers.Database;
 import com.vladmihalcea.hpjp.util.spring.config.jpa.AbstractJPAConfiguration;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import javax.sql.DataSource;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,53 +34,46 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-
 @Configuration
 @ComponentScan(basePackages = "com.vladmihalcea.hpjp.spring.transaction.routing")
 @PropertySource("/META-INF/jdbc-postgresql-replication.properties")
 public class TransactionRoutingConfiguration extends AbstractJPAConfiguration {
 
-    @Value("${jdbc.url.primary}")
-    private String primaryUrl;
+  @Value("${jdbc.url.primary}")
+  private String primaryUrl;
 
-    @Value("${jdbc.url.replica}")
-    private String replicaUrl;
+  @Value("${jdbc.url.replica}")
+  private String replicaUrl;
 
-    @Value("${jdbc.username}")
-    private String username;
+  @Value("${jdbc.username}")
+  private String username;
 
-    @Value("${jdbc.password}")
-    private String password;
+  @Value("${jdbc.password}")
+  private String password;
 
-    public TransactionRoutingConfiguration() {
-        super(Database.POSTGRESQL);
-    }
+  public TransactionRoutingConfiguration() {
+    super(Database.POSTGRESQL);
+  }
 
-    @Bean
-    public DataSource readWriteDataSource() {
-        PGSimpleDataSource dataSource = new PGSimpleDataSource();
-        dataSource.setURL(primaryUrl);
-        dataSource.setUser(username);
-        dataSource.setPassword(password);
-        return connectionPoolDataSource(dataSource);
-    }
+  @Bean
+  public DataSource readWriteDataSource() {
+    PGSimpleDataSource dataSource = new PGSimpleDataSource();
+    dataSource.setURL(primaryUrl);
+    dataSource.setUser(username);
+    dataSource.setPassword(password);
+    return connectionPoolDataSource(dataSource);
+  }
 
-    @Bean
-    public DataSource readOnlyDataSource() {
-        PGSimpleDataSource dataSource = new PGSimpleDataSource();
-        dataSource.setURL(replicaUrl);
-        dataSource.setUser(username);
-        dataSource.setPassword(password);
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("""
+  @Bean
+  public DataSource readOnlyDataSource() {
+    PGSimpleDataSource dataSource = new PGSimpleDataSource();
+    dataSource.setURL(replicaUrl);
+    dataSource.setUser(username);
+    dataSource.setPassword(password);
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          """
                 create sequence if not exists hibernate_sequence start 1 increment 1;
                 create table if not exists post (id int8 not null, title varchar(255), primary key (id));
                 create table if not exists post_comment (id int8 not null, review varchar(255), post_id int8, primary key (id));
@@ -89,57 +89,53 @@ public class TransactionRoutingConfiguration extends AbstractJPAConfiguration {
                 alter table if exists post_tag add constraint FKac1wdchd2pnur3fl225obmlg0 foreign key (tag_id) references tag;
                 alter table if exists post_tag add constraint FKc2auetuvsec0k566l0eyvr9cs foreign key (post_id) references post;
                 """);
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
-        return connectionPoolDataSource(dataSource);
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
+    return connectionPoolDataSource(dataSource);
+  }
 
-    @Bean
-    public TransactionRoutingDataSource actualDataSource() {
-        TransactionRoutingDataSource routingDataSource = new TransactionRoutingDataSource();
+  @Bean
+  public TransactionRoutingDataSource actualDataSource() {
+    TransactionRoutingDataSource routingDataSource = new TransactionRoutingDataSource();
 
-        Map<Object, Object> dataSourceMap = new HashMap<>();
-        dataSourceMap.put(DataSourceType.READ_WRITE, readWriteDataSource());
-        dataSourceMap.put(DataSourceType.READ_ONLY, readOnlyDataSource());
+    Map<Object, Object> dataSourceMap = new HashMap<>();
+    dataSourceMap.put(DataSourceType.READ_WRITE, readWriteDataSource());
+    dataSourceMap.put(DataSourceType.READ_ONLY, readOnlyDataSource());
 
-        routingDataSource.setTargetDataSources(dataSourceMap);
-        return routingDataSource;
-    }
+    routingDataSource.setTargetDataSources(dataSourceMap);
+    return routingDataSource;
+  }
 
-    @Override
-    protected Properties additionalProperties() {
-        Properties properties = super.additionalProperties();
-        properties.setProperty(
-            "hibernate.connection.provider_disables_autocommit",
-            Boolean.TRUE.toString()
-        );
-        return properties;
-    }
+  @Override
+  protected Properties additionalProperties() {
+    Properties properties = super.additionalProperties();
+    properties.setProperty(
+        "hibernate.connection.provider_disables_autocommit", Boolean.TRUE.toString());
+    return properties;
+  }
 
-    @Override
-    protected String[] packagesToScan() {
-        return new String[]{
-            "com.vladmihalcea.hpjp.hibernate.transaction.forum"
-        };
-    }
+  @Override
+  protected String[] packagesToScan() {
+    return new String[] {"com.vladmihalcea.hpjp.hibernate.transaction.forum"};
+  }
 
-    @Override
-    protected String databaseType() {
-        return Database.POSTGRESQL.name().toLowerCase();
-    }
+  @Override
+  protected String databaseType() {
+    return Database.POSTGRESQL.name().toLowerCase();
+  }
 
-    protected HikariConfig hikariConfig(DataSource dataSource) {
-        HikariConfig hikariConfig = new HikariConfig();
-        int cpuCores = Runtime.getRuntime().availableProcessors();
-        hikariConfig.setMaximumPoolSize(cpuCores * 4);
-        hikariConfig.setDataSource(dataSource);
+  protected HikariConfig hikariConfig(DataSource dataSource) {
+    HikariConfig hikariConfig = new HikariConfig();
+    int cpuCores = Runtime.getRuntime().availableProcessors();
+    hikariConfig.setMaximumPoolSize(cpuCores * 4);
+    hikariConfig.setDataSource(dataSource);
 
-        hikariConfig.setAutoCommit(false);
-        return hikariConfig;
-    }
+    hikariConfig.setAutoCommit(false);
+    return hikariConfig;
+  }
 
-    protected HikariDataSource connectionPoolDataSource(DataSource dataSource) {
-        return new HikariDataSource(hikariConfig(dataSource));
-    }
+  protected HikariDataSource connectionPoolDataSource(DataSource dataSource) {
+    return new HikariDataSource(hikariConfig(dataSource));
+  }
 }

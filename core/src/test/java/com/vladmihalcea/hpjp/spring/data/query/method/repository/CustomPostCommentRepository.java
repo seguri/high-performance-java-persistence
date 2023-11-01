@@ -2,7 +2,6 @@ package com.vladmihalcea.hpjp.spring.data.query.method.repository;
 
 import com.vladmihalcea.hpjp.spring.data.query.method.domain.Post;
 import com.vladmihalcea.hpjp.spring.data.query.method.domain.PostCommentDTO;
-
 import java.util.List;
 
 /**
@@ -10,5 +9,5 @@ import java.util.List;
  */
 public interface CustomPostCommentRepository {
 
-    List<PostCommentDTO> findCommentHierarchy(Post post);
+  List<PostCommentDTO> findCommentHierarchy(Post post);
 }

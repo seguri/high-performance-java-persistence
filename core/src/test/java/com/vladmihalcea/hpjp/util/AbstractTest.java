@@ -1,5 +1,7 @@
 package com.vladmihalcea.hpjp.util;
 
+import static org.junit.Assert.fail;
+
 import com.vladmihalcea.hpjp.util.exception.DataAccessException;
 import com.vladmihalcea.hpjp.util.providers.DataSourceProvider;
 import com.vladmihalcea.hpjp.util.providers.Database;
@@ -7,11 +9,24 @@ import com.vladmihalcea.hpjp.util.providers.LockType;
 import com.vladmihalcea.hpjp.util.transaction.*;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import net.steppschuh.markdowngenerator.table.Table;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.spi.PersistenceUnitInfo;
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.sql.*;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import javax.sql.DataSource;
+import net.steppschuh.markdowngenerator.table.Table;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.hibernate.*;
@@ -46,1130 +61,1094 @@ import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.DataSource;
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.sql.*;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.fail;
-
 public abstract class AbstractTest {
 
-    public static final boolean ENABLE_LONG_RUNNING_TESTS = false;
+  public static final boolean ENABLE_LONG_RUNNING_TESTS = false;
 
-    static {
-        Thread.currentThread().setName("Alice");
+  static {
+    Thread.currentThread().setName("Alice");
+  }
+
+  protected final ExecutorService executorService =
+      Executors.newSingleThreadExecutor(
+          r -> {
+            Thread bob = new Thread(r);
+            bob.setName("Bob");
+            return bob;
+          });
+
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+
+  private DataSource dataSource;
+
+  private EntityManagerFactory emf;
+
+  private SessionFactory sf;
+
+  private List<Closeable> closeables = new ArrayList<>();
+
+  @Before
+  public void init() {
+    beforeInit();
+    if (nativeHibernateSessionFactoryBootstrap()) {
+      sf = newSessionFactory();
+    } else {
+      emf = newEntityManagerFactory();
+    }
+    afterInit();
+  }
+
+  protected void beforeInit() {}
+
+  protected void afterInit() {}
+
+  @After
+  public void destroy() {
+    if (nativeHibernateSessionFactoryBootstrap()) {
+      if (sf != null) {
+        sf.close();
+      }
+    } else {
+      if (emf != null) {
+        emf.close();
+      }
+    }
+    for (Closeable closeable : closeables) {
+      try {
+        closeable.close();
+      } catch (IOException e) {
+        LOGGER.error("Failure", e);
+      }
+    }
+    closeables.clear();
+    afterDestroy();
+  }
+
+  protected void afterDestroy() {}
+
+  public EntityManagerFactory entityManagerFactory() {
+    return nativeHibernateSessionFactoryBootstrap() ? sf : emf;
+  }
+
+  public SessionFactory sessionFactory() {
+    if (nativeHibernateSessionFactoryBootstrap()) {
+      return sf;
+    }
+    EntityManagerFactory entityManagerFactory = entityManagerFactory();
+    if (entityManagerFactory == null) {
+      return null;
+    }
+    return entityManagerFactory.unwrap(SessionFactory.class);
+  }
+
+  protected boolean nativeHibernateSessionFactoryBootstrap() {
+    return false;
+  }
+
+  protected Class<?>[] entities() {
+    return new Class[] {};
+  }
+
+  protected List<String> entityClassNames() {
+    return Arrays.asList(entities()).stream().map(Class::getName).collect(Collectors.toList());
+  }
+
+  protected String[] packages() {
+    return null;
+  }
+
+  protected String[] resources() {
+    return null;
+  }
+
+  protected Interceptor interceptor() {
+    return null;
+  }
+
+  private SessionFactory newSessionFactory() {
+    final BootstrapServiceRegistryBuilder bsrb =
+        new BootstrapServiceRegistryBuilder().enableAutoClose();
+
+    Integrator integrator = integrator();
+    if (integrator != null) {
+      bsrb.applyIntegrator(integrator);
     }
 
-    protected final ExecutorService executorService = Executors.newSingleThreadExecutor(r -> {
-        Thread bob = new Thread(r);
-        bob.setName("Bob");
-        return bob;
-    });
+    final BootstrapServiceRegistry bsr = bsrb.build();
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+    final StandardServiceRegistry serviceRegistry =
+        new StandardServiceRegistryBuilder(bsr).applySettings(properties()).build();
 
-    private DataSource dataSource;
+    final MetadataSources metadataSources = new MetadataSources(serviceRegistry);
 
-    private EntityManagerFactory emf;
-
-    private SessionFactory sf;
-
-    private List<Closeable> closeables = new ArrayList<>();
-
-    @Before
-    public void init() {
-        beforeInit();
-        if(nativeHibernateSessionFactoryBootstrap()) {
-            sf = newSessionFactory();
-        } else {
-            emf = newEntityManagerFactory();
-        }
-        afterInit();
+    for (Class annotatedClass : entities()) {
+      metadataSources.addAnnotatedClass(annotatedClass);
     }
 
-    protected void beforeInit() {
-
+    String[] packages = packages();
+    if (packages != null) {
+      for (String annotatedPackage : packages) {
+        metadataSources.addPackage(annotatedPackage);
+      }
     }
 
-    protected void afterInit() {
-
+    String[] resources = resources();
+    if (resources != null) {
+      for (String resource : resources) {
+        metadataSources.addResource(resource);
+      }
     }
 
-    @After
-    public void destroy() {
-        if(nativeHibernateSessionFactoryBootstrap()) {
-            if (sf != null) {
-                sf.close();
-            }
-        } else {
-            if (emf != null) {
-                emf.close();
-            }
-        }
-        for(Closeable closeable : closeables) {
-            try {
-                closeable.close();
-            } catch (IOException e) {
-                LOGGER.error("Failure", e);
-            }
-        }
-        closeables.clear();
-        afterDestroy();
+    final MetadataBuilder metadataBuilder =
+        metadataSources
+            .getMetadataBuilder()
+            .applyImplicitNamingStrategy(ImplicitNamingStrategyLegacyJpaImpl.INSTANCE);
+
+    final List<UserType<?>> additionalTypes = additionalTypes();
+    if (additionalTypes != null) {
+      additionalTypes.forEach(
+          type -> {
+            metadataBuilder.applyTypes(
+                (typeContributions, sr) -> typeContributions.contributeType(type));
+          });
     }
 
-    protected void afterDestroy() {
+    additionalMetadata(metadataBuilder);
 
+    MetadataImplementor metadata = (MetadataImplementor) metadataBuilder.build();
+
+    final SessionFactoryBuilder sfb = metadata.getSessionFactoryBuilder();
+    Interceptor interceptor = interceptor();
+    if (interceptor != null) {
+      sfb.applyInterceptor(interceptor);
     }
 
-    public EntityManagerFactory entityManagerFactory() {
-        return nativeHibernateSessionFactoryBootstrap() ? sf : emf;
+    return sfb.build();
+  }
+
+  private SessionFactory newLegacySessionFactory() {
+    Properties properties = properties();
+    Configuration configuration = new Configuration().addProperties(properties);
+    for (Class<?> entityClass : entities()) {
+      configuration.addAnnotatedClass(entityClass);
+    }
+    String[] packages = packages();
+    if (packages != null) {
+      for (String scannedPackage : packages) {
+        configuration.addPackage(scannedPackage);
+      }
+    }
+    String[] resources = resources();
+    if (resources != null) {
+      for (String resource : resources) {
+        configuration.addResource(resource);
+      }
+    }
+    Interceptor interceptor = interceptor();
+    if (interceptor != null) {
+      configuration.setInterceptor(interceptor);
     }
 
-    public SessionFactory sessionFactory() {
-        if(nativeHibernateSessionFactoryBootstrap()) {
-            return sf;
-        }
-        EntityManagerFactory entityManagerFactory = entityManagerFactory();
-        if(entityManagerFactory == null) {
-            return null;
-        }
-        return entityManagerFactory.unwrap(SessionFactory.class);
+    final List<UserType<?>> additionalTypes = additionalTypes();
+    if (additionalTypes != null) {
+      configuration.registerTypeContributor(
+          (typeContributions, serviceRegistry) ->
+              additionalTypes.forEach(typeContributions::contributeType));
     }
-    protected boolean nativeHibernateSessionFactoryBootstrap() {
-        return false;
-    }
+    return configuration.buildSessionFactory(
+        new StandardServiceRegistryBuilder().applySettings(properties).build());
+  }
 
-    protected Class<?>[] entities() {
-        return new Class[]{};
+  protected EntityManagerFactory newEntityManagerFactory() {
+    PersistenceUnitInfo persistenceUnitInfo = persistenceUnitInfo(getClass().getSimpleName());
+    Map configuration = properties();
+    Interceptor interceptor = interceptor();
+    if (interceptor != null) {
+      configuration.put(AvailableSettings.INTERCEPTOR, interceptor);
     }
-
-    protected List<String> entityClassNames() {
-        return Arrays.asList(entities()).stream().map(Class::getName).collect(Collectors.toList());
-    }
-
-    protected String[] packages() {
-        return null;
+    Integrator integrator = integrator();
+    if (integrator != null) {
+      configuration.put(
+          "hibernate.integrator_provider",
+          (IntegratorProvider) () -> Collections.singletonList(integrator));
     }
 
-    protected String[] resources() {
-        return null;
-    }
-
-    protected Interceptor interceptor() {
-        return null;
-    }
-
-    private SessionFactory newSessionFactory() {
-        final BootstrapServiceRegistryBuilder bsrb = new BootstrapServiceRegistryBuilder()
-            .enableAutoClose();
-
-        Integrator integrator = integrator();
-        if (integrator != null) {
-            bsrb.applyIntegrator( integrator );
-        }
-
-        final BootstrapServiceRegistry bsr = bsrb.build();
-
-        final StandardServiceRegistry serviceRegistry = new StandardServiceRegistryBuilder(bsr)
-            .applySettings(properties())
-            .build();
-
-        final MetadataSources metadataSources = new MetadataSources(serviceRegistry);
-
-        for (Class annotatedClass : entities()) {
-            metadataSources.addAnnotatedClass(annotatedClass);
-        }
-
-        String[] packages = packages();
-        if (packages != null) {
-            for (String annotatedPackage : packages) {
-                metadataSources.addPackage(annotatedPackage);
-            }
-        }
-
-        String[] resources = resources();
-        if (resources != null) {
-            for (String resource : resources) {
-                metadataSources.addResource(resource);
-            }
-        }
-
-        final MetadataBuilder metadataBuilder = metadataSources.getMetadataBuilder()
-        .applyImplicitNamingStrategy(ImplicitNamingStrategyLegacyJpaImpl.INSTANCE);
-
-        final List<UserType<?>> additionalTypes = additionalTypes();
-        if (additionalTypes != null) {
-            additionalTypes.forEach(type -> {
-                metadataBuilder.applyTypes((typeContributions, sr) -> typeContributions.contributeType(type));
-            });
-        }
-
-        additionalMetadata(metadataBuilder);
-
-        MetadataImplementor metadata = (MetadataImplementor) metadataBuilder.build();
-
-        final SessionFactoryBuilder sfb = metadata.getSessionFactoryBuilder();
-        Interceptor interceptor = interceptor();
-        if(interceptor != null) {
-            sfb.applyInterceptor(interceptor);
-        }
-
-        return sfb.build();
-    }
-
-    private SessionFactory newLegacySessionFactory() {
-        Properties properties = properties();
-        Configuration configuration = new Configuration().addProperties(properties);
-        for(Class<?> entityClass : entities()) {
-            configuration.addAnnotatedClass(entityClass);
-        }
-        String[] packages = packages();
-        if(packages != null) {
-            for(String scannedPackage : packages) {
-                configuration.addPackage(scannedPackage);
-            }
-        }
-        String[] resources = resources();
-        if (resources != null) {
-            for (String resource : resources) {
-                configuration.addResource(resource);
-            }
-        }
-        Interceptor interceptor = interceptor();
-        if(interceptor != null) {
-            configuration.setInterceptor(interceptor);
-        }
-
-        final List<UserType<?>> additionalTypes = additionalTypes();
-        if (additionalTypes != null) {
-            configuration.registerTypeContributor(
-                (typeContributions, serviceRegistry) ->
-                    additionalTypes.forEach(typeContributions::contributeType)
-            );
-        }
-        return configuration.buildSessionFactory(
-                new StandardServiceRegistryBuilder()
-                        .applySettings(properties)
-                        .build()
-        );
-    }
-
-    protected EntityManagerFactory newEntityManagerFactory() {
-        PersistenceUnitInfo persistenceUnitInfo = persistenceUnitInfo(getClass().getSimpleName());
-        Map configuration = properties();
-        Interceptor interceptor = interceptor();
-        if (interceptor != null) {
-            configuration.put(AvailableSettings.INTERCEPTOR, interceptor);
-        }
-        Integrator integrator = integrator();
-        if (integrator != null) {
-            configuration.put("hibernate.integrator_provider", (IntegratorProvider) () -> Collections.singletonList(integrator));
-        }
-
-        List<UserType<?>> additionalTypes = additionalTypes();
-        if (additionalTypes != null) {
-            configuration.put("hibernate.type_contributors",
-                (TypeContributorList) () -> Collections.singletonList(
-                    (typeContributions, serviceRegistry) -> {
+    List<UserType<?>> additionalTypes = additionalTypes();
+    if (additionalTypes != null) {
+      configuration.put(
+          "hibernate.type_contributors",
+          (TypeContributorList)
+              () ->
+                  Collections.singletonList(
+                      (typeContributions, serviceRegistry) -> {
                         additionalTypes.forEach(typeContributions::contributeType);
-                    }
-                ));
-        }
-
-        EntityManagerFactoryBuilderImpl entityManagerFactoryBuilder = new EntityManagerFactoryBuilderImpl(
-            new PersistenceUnitInfoDescriptor(persistenceUnitInfo), configuration
-        );
-        return entityManagerFactoryBuilder.build();
+                      }));
     }
 
-    protected Integrator integrator() {
-        return null;
+    EntityManagerFactoryBuilderImpl entityManagerFactoryBuilder =
+        new EntityManagerFactoryBuilderImpl(
+            new PersistenceUnitInfoDescriptor(persistenceUnitInfo), configuration);
+    return entityManagerFactoryBuilder.build();
+  }
+
+  protected Integrator integrator() {
+    return null;
+  }
+
+  protected PersistenceUnitInfoImpl persistenceUnitInfo(String name) {
+    PersistenceUnitInfoImpl persistenceUnitInfo =
+        new PersistenceUnitInfoImpl(name, entityClassNames(), properties());
+    String[] resources = resources();
+    if (resources != null) {
+      persistenceUnitInfo.getMappingFileNames().addAll(Arrays.asList(resources));
     }
+    return persistenceUnitInfo;
+  }
 
-    protected PersistenceUnitInfoImpl persistenceUnitInfo(String name) {
-        PersistenceUnitInfoImpl persistenceUnitInfo = new PersistenceUnitInfoImpl(
-            name, entityClassNames(), properties()
-        );
-        String[] resources = resources();
-        if (resources != null) {
-            persistenceUnitInfo.getMappingFileNames().addAll(Arrays.asList(resources));
-        }
-        return persistenceUnitInfo;
+  protected Properties properties() {
+    Properties properties = new Properties();
+    // log settings
+    properties.put("hibernate.hbm2ddl.auto", "create-drop");
+    properties.put("hibernate.dialect", dataSourceProvider().hibernateDialect());
+    // data source settings
+    DataSource dataSource = dataSource();
+    if (dataSource != null) {
+      properties.put("hibernate.connection.datasource", dataSource);
     }
+    properties.put("hibernate.generate_statistics", Boolean.TRUE.toString());
 
-    protected Properties properties() {
-        Properties properties = new Properties();
-        //log settings
-        properties.put("hibernate.hbm2ddl.auto", "create-drop");
-        properties.put("hibernate.dialect", dataSourceProvider().hibernateDialect());
-        //data source settings
-        DataSource dataSource = dataSource();
-        if (dataSource != null) {
-            properties.put("hibernate.connection.datasource", dataSource);
-        }
-        properties.put("hibernate.generate_statistics", Boolean.TRUE.toString());
+    properties.put(
+        "net.sf.ehcache.configurationResourceName",
+        Thread.currentThread().getContextClassLoader().getResource("ehcache.xml").toString());
+    // properties.put("hibernate.ejb.metamodel.population", "disabled");
+    additionalProperties(properties);
+    return properties;
+  }
 
-        properties.put("net.sf.ehcache.configurationResourceName", Thread.currentThread().getContextClassLoader().getResource("ehcache.xml").toString());
-        //properties.put("hibernate.ejb.metamodel.population", "disabled");
-        additionalProperties(properties);
-        return properties;
+  protected Dialect dialect() {
+    SessionFactory sessionFactory = sessionFactory();
+    return sessionFactory != null
+        ? sessionFactory.unwrap(SessionFactoryImplementor.class).getJdbcServices().getDialect()
+        : ReflectionUtils.newInstance(dataSourceProvider().hibernateDialect());
+  }
+
+  protected Map<String, Object> propertiesMap() {
+    return (Map) properties();
+  }
+
+  protected void additionalProperties(Properties properties) {}
+
+  protected DataSourceProxyType dataSourceProxyType() {
+    return DataSourceProxyType.DATA_SOURCE_PROXY;
+  }
+
+  protected DataSource dataSource() {
+    if (dataSource == null) {
+      dataSource = newDataSource();
     }
+    return dataSource;
+  }
 
-    protected Dialect dialect() {
-        SessionFactory sessionFactory = sessionFactory();
-        return sessionFactory != null ?
-            sessionFactory.unwrap(SessionFactoryImplementor.class).getJdbcServices().getDialect() :
-            ReflectionUtils.newInstance(dataSourceProvider().hibernateDialect());
-    }
-
-    protected Map<String, Object> propertiesMap() {
-        return (Map) properties();
-    }
-
-    protected void additionalProperties(Properties properties) {
-
-    }
-
-    protected DataSourceProxyType dataSourceProxyType() {
-        return DataSourceProxyType.DATA_SOURCE_PROXY;
-    }
-
-    protected DataSource dataSource() {
-        if(dataSource == null) {
-            dataSource = newDataSource();
-        }
-        return dataSource;
-    }
-
-    protected DataSource newDataSource() {
-        DataSource dataSource =
+  protected DataSource newDataSource() {
+    DataSource dataSource =
         proxyDataSource()
             ? dataSourceProxyType().dataSource(dataSourceProvider().dataSource())
             : dataSourceProvider().dataSource();
-        if(connectionPooling()) {
-            HikariDataSource poolingDataSource = connectionPoolDataSource(dataSource);
-            closeables.add(poolingDataSource::close);
-            return poolingDataSource;
-        } else {
-            return dataSource;
-        }
+    if (connectionPooling()) {
+      HikariDataSource poolingDataSource = connectionPoolDataSource(dataSource);
+      closeables.add(poolingDataSource::close);
+      return poolingDataSource;
+    } else {
+      return dataSource;
     }
+  }
 
-    protected boolean proxyDataSource() {
-        return true;
-    }
+  protected boolean proxyDataSource() {
+    return true;
+  }
 
-    protected HikariDataSource connectionPoolDataSource(DataSource dataSource) {
-        return new HikariDataSource(hikariConfig(dataSource));
-    }
+  protected HikariDataSource connectionPoolDataSource(DataSource dataSource) {
+    return new HikariDataSource(hikariConfig(dataSource));
+  }
 
-    protected HikariConfig hikariConfig(DataSource dataSource) {
-        HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setMaximumPoolSize(connectionPoolSize());
-        hikariConfig.setDataSource(dataSource);
-        return hikariConfig;
-    }
+  protected HikariConfig hikariConfig(DataSource dataSource) {
+    HikariConfig hikariConfig = new HikariConfig();
+    hikariConfig.setMaximumPoolSize(connectionPoolSize());
+    hikariConfig.setDataSource(dataSource);
+    return hikariConfig;
+  }
 
-    protected boolean connectionPooling() {
-        return false;
-    }
+  protected boolean connectionPooling() {
+    return false;
+  }
 
-    protected int connectionPoolSize() {
-        int cpuCores = Runtime.getRuntime().availableProcessors();
-        return cpuCores * 4;
-    }
+  protected int connectionPoolSize() {
+    int cpuCores = Runtime.getRuntime().availableProcessors();
+    return cpuCores * 4;
+  }
 
-    protected DataSourceProvider dataSourceProvider() {
-        return database().dataSourceProvider();
-    }
+  protected DataSourceProvider dataSourceProvider() {
+    return database().dataSourceProvider();
+  }
 
-    protected Database database() {
-        return Database.HSQLDB;
-    }
+  protected Database database() {
+    return Database.HSQLDB;
+  }
 
-    protected List<UserType<?>> additionalTypes() {
-        return null;
-    }
+  protected List<UserType<?>> additionalTypes() {
+    return null;
+  }
 
-    protected void additionalMetadata(MetadataBuilder metadataBuilder) {
+  protected void additionalMetadata(MetadataBuilder metadataBuilder) {}
 
-    }
+  protected <T> T doInHibernate(HibernateTransactionFunction<T> callable) {
+    T result = null;
+    Session session = null;
+    Transaction txn = null;
+    try {
+      session = sessionFactory().openSession();
+      callable.beforeTransactionCompletion();
+      txn = session.beginTransaction();
 
-    protected <T> T doInHibernate(HibernateTransactionFunction<T> callable) {
-        T result = null;
-        Session session = null;
-        Transaction txn = null;
+      result = callable.apply(session);
+      if (!txn.getRollbackOnly()) {
+        txn.commit();
+      } else {
         try {
-            session = sessionFactory().openSession();
-            callable.beforeTransactionCompletion();
-            txn = session.beginTransaction();
-
-            result = callable.apply(session);
-            if ( !txn.getRollbackOnly() ) {
-                txn.commit();
-            }
-            else {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-        } catch (Throwable t) {
-            if ( txn != null && txn.isActive() ) {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-            throw t;
-        } finally {
-            callable.afterTransactionCompletion();
-            if (session != null) {
-                session.close();
-            }
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
-        return result;
-    }
-
-    protected void doInHibernate(HibernateTransactionConsumer callable) {
-        Session session = null;
-        Transaction txn = null;
+      }
+    } catch (Throwable t) {
+      if (txn != null && txn.isActive()) {
         try {
-            session = sessionFactory().openSession();
-            callable.beforeTransactionCompletion();
-            txn = session.beginTransaction();
-
-            callable.accept(session);
-            if ( !txn.getRollbackOnly() ) {
-                txn.commit();
-            }
-            else {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-        } catch (Throwable t) {
-            if ( txn != null && txn.isActive() ) {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-            throw t;
-        } finally {
-            callable.afterTransactionCompletion();
-            if (session != null) {
-                session.close();
-            }
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
+      }
+      throw t;
+    } finally {
+      callable.afterTransactionCompletion();
+      if (session != null) {
+        session.close();
+      }
     }
+    return result;
+  }
 
-    protected <T> T doInJPA(JPATransactionFunction<T> function) {
-        T result = null;
-        EntityManager entityManager = null;
-        EntityTransaction txn = null;
+  protected void doInHibernate(HibernateTransactionConsumer callable) {
+    Session session = null;
+    Transaction txn = null;
+    try {
+      session = sessionFactory().openSession();
+      callable.beforeTransactionCompletion();
+      txn = session.beginTransaction();
+
+      callable.accept(session);
+      if (!txn.getRollbackOnly()) {
+        txn.commit();
+      } else {
         try {
-            entityManager = entityManagerFactory().createEntityManager();
-            function.beforeTransactionCompletion();
-            txn = entityManager.getTransaction();
-            txn.begin();
-            result = function.apply(entityManager);
-            if ( !txn.getRollbackOnly() ) {
-                txn.commit();
-            }
-            else {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-        } catch (Throwable t) {
-            if ( txn != null && txn.isActive() ) {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-            throw t;
-        } finally {
-            function.afterTransactionCompletion();
-            if (entityManager != null) {
-                entityManager.close();
-            }
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
-        return result;
-    }
-
-    protected void doInJPA(JPATransactionVoidFunction function) {
-        EntityManager entityManager = null;
-        EntityTransaction txn = null;
+      }
+    } catch (Throwable t) {
+      if (txn != null && txn.isActive()) {
         try {
-            entityManager = entityManagerFactory().createEntityManager();
-            function.beforeTransactionCompletion();
-            txn = entityManager.getTransaction();
-            txn.begin();
-            function.accept(entityManager);
-            if ( !txn.getRollbackOnly() ) {
-                txn.commit();
-            }
-            else {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-        } catch (Throwable t) {
-            if ( txn != null && txn.isActive() ) {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-            throw t;
-        } finally {
-            function.afterTransactionCompletion();
-            if (entityManager != null) {
-                entityManager.close();
-            }
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
+      }
+      throw t;
+    } finally {
+      callable.afterTransactionCompletion();
+      if (session != null) {
+        session.close();
+      }
     }
+  }
 
-    protected <T> T doInJDBC(ConnectionCallable<T> callable) {
-        AtomicReference<T> result = new AtomicReference<>();
-        Session session = null;
-        Transaction txn = null;
+  protected <T> T doInJPA(JPATransactionFunction<T> function) {
+    T result = null;
+    EntityManager entityManager = null;
+    EntityTransaction txn = null;
+    try {
+      entityManager = entityManagerFactory().createEntityManager();
+      function.beforeTransactionCompletion();
+      txn = entityManager.getTransaction();
+      txn.begin();
+      result = function.apply(entityManager);
+      if (!txn.getRollbackOnly()) {
+        txn.commit();
+      } else {
         try {
-            session = sessionFactory().openSession();
-            txn = session.beginTransaction();
-            session.doWork(connection -> {
-                result.set(callable.execute(connection));
-            });
-            if ( !txn.getRollbackOnly() ) {
-                txn.commit();
-            }
-            else {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-        } catch (Throwable t) {
-            if ( txn != null && txn.isActive() ) {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-            throw t;
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
-        return result.get();
-    }
-
-    protected void doInJDBC(ConnectionVoidCallable callable) {
-        Session session = null;
-        Transaction txn = null;
+      }
+    } catch (Throwable t) {
+      if (txn != null && txn.isActive()) {
         try {
-            session = sessionFactory().openSession();
-            session.setDefaultReadOnly(true);
-            session.setHibernateFlushMode(FlushMode.MANUAL);
-            txn = session.beginTransaction();
-            session.doWork(callable::execute);
-            if ( !txn.getRollbackOnly() ) {
-                txn.commit();
-            }
-            else {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-        } catch (Throwable t) {
-            if ( txn != null && txn.isActive() ) {
-                try {
-                    txn.rollback();
-                }
-                catch (Exception e) {
-                    LOGGER.error( "Rollback failure", e );
-                }
-            }
-            throw t;
-        } finally {
-            if (session != null) {
-                session.close();
-            }
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
+      }
+      throw t;
+    } finally {
+      function.afterTransactionCompletion();
+      if (entityManager != null) {
+        entityManager.close();
+      }
     }
+    return result;
+  }
 
-    protected void executeSync(VoidCallable callable) {
-        executeSync(Collections.singleton(callable));
-    }
-
-    protected <T> T executeSync(Callable<T> callable) {
+  protected void doInJPA(JPATransactionVoidFunction function) {
+    EntityManager entityManager = null;
+    EntityTransaction txn = null;
+    try {
+      entityManager = entityManagerFactory().createEntityManager();
+      function.beforeTransactionCompletion();
+      txn = entityManager.getTransaction();
+      txn.begin();
+      function.accept(entityManager);
+      if (!txn.getRollbackOnly()) {
+        txn.commit();
+      } else {
         try {
-            return executorService.submit(callable).get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
-    }
-
-    protected void executeSync(Collection<VoidCallable> callables) {
+      }
+    } catch (Throwable t) {
+      if (txn != null && txn.isActive()) {
         try {
-            List<Future<Void>> futures = executorService.invokeAll(callables);
-            for (Future<Void> future : futures) {
-                future.get();
-            }
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
         }
+      }
+      throw t;
+    } finally {
+      function.afterTransactionCompletion();
+      if (entityManager != null) {
+        entityManager.close();
+      }
     }
+  }
 
-    protected void executeAsync(Runnable callable, final Runnable completionCallback) {
-        final Future future = executorService.submit(callable);
-        new Thread(() -> {
-            while (!future.isDone()) {
+  protected <T> T doInJDBC(ConnectionCallable<T> callable) {
+    AtomicReference<T> result = new AtomicReference<>();
+    Session session = null;
+    Transaction txn = null;
+    try {
+      session = sessionFactory().openSession();
+      txn = session.beginTransaction();
+      session.doWork(
+          connection -> {
+            result.set(callable.execute(connection));
+          });
+      if (!txn.getRollbackOnly()) {
+        txn.commit();
+      } else {
+        try {
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
+        }
+      }
+    } catch (Throwable t) {
+      if (txn != null && txn.isActive()) {
+        try {
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
+        }
+      }
+      throw t;
+    } finally {
+      if (session != null) {
+        session.close();
+      }
+    }
+    return result.get();
+  }
+
+  protected void doInJDBC(ConnectionVoidCallable callable) {
+    Session session = null;
+    Transaction txn = null;
+    try {
+      session = sessionFactory().openSession();
+      session.setDefaultReadOnly(true);
+      session.setHibernateFlushMode(FlushMode.MANUAL);
+      txn = session.beginTransaction();
+      session.doWork(callable::execute);
+      if (!txn.getRollbackOnly()) {
+        txn.commit();
+      } else {
+        try {
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
+        }
+      }
+    } catch (Throwable t) {
+      if (txn != null && txn.isActive()) {
+        try {
+          txn.rollback();
+        } catch (Exception e) {
+          LOGGER.error("Rollback failure", e);
+        }
+      }
+      throw t;
+    } finally {
+      if (session != null) {
+        session.close();
+      }
+    }
+  }
+
+  protected void executeSync(VoidCallable callable) {
+    executeSync(Collections.singleton(callable));
+  }
+
+  protected <T> T executeSync(Callable<T> callable) {
+    try {
+      return executorService.submit(callable).get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  protected void executeSync(Collection<VoidCallable> callables) {
+    try {
+      List<Future<Void>> futures = executorService.invokeAll(callables);
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  protected void executeAsync(Runnable callable, final Runnable completionCallback) {
+    final Future future = executorService.submit(callable);
+    new Thread(
+            () -> {
+              while (!future.isDone()) {
                 try {
-                    Thread.sleep(100);
+                  Thread.sleep(100);
                 } catch (Exception e) {
-                    throw new IllegalStateException(e);
+                  throw new IllegalStateException(e);
                 }
-            }
-            try {
+              }
+              try {
                 completionCallback.run();
-            } catch (Exception e) {
+              } catch (Exception e) {
                 throw new IllegalStateException(e);
-            }
-        }).start();
-    }
+              }
+            })
+        .start();
+  }
 
-    protected Future<?> executeAsync(Runnable callable) {
-        return executorService.submit(callable);
-    }
+  protected Future<?> executeAsync(Runnable callable) {
+    return executorService.submit(callable);
+  }
 
-    protected  void transact(Consumer<Connection> callback) {
-        transact(callback, null);
-    }
+  protected void transact(Consumer<Connection> callback) {
+    transact(callback, null);
+  }
 
-    protected  void transact(Consumer<Connection> callback, Consumer<Connection> before) {
-        Connection connection = null;
+  protected void transact(Consumer<Connection> callback, Consumer<Connection> before) {
+    Connection connection = null;
+    try {
+      connection = dataSource().getConnection();
+      if (before != null) {
+        before.accept(connection);
+      }
+      connection.setAutoCommit(false);
+      callback.accept(connection);
+      connection.commit();
+    } catch (Exception e) {
+      if (connection != null) {
         try {
-            connection = dataSource().getConnection();
-            if (before != null) {
-                before.accept(connection);
-            }
-            connection.setAutoCommit(false);
-            callback.accept(connection);
-            connection.commit();
-        } catch (Exception e) {
-            if (connection != null) {
-                try {
-                    connection.rollback();
-                } catch (SQLException ex) {
-                    throw new DataAccessException( e);
-                }
-            }
-            throw (e instanceof DataAccessException ?
-                    (DataAccessException) e : new DataAccessException(e));
-        } finally {
-            if(connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) {
-                    throw new DataAccessException(e);
-                }
-            }
+          connection.rollback();
+        } catch (SQLException ex) {
+          throw new DataAccessException(e);
         }
-    }
-
-    protected LockType lockType() {
-        return LockType.LOCKS;
-    }
-
-    protected void awaitOnLatch(CountDownLatch latch) {
+      }
+      throw (e instanceof DataAccessException
+          ? (DataAccessException) e
+          : new DataAccessException(e));
+    } finally {
+      if (connection != null) {
         try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    protected void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    protected <V> V sleep(int millis, Callable<V> callable) {
-        V result = null;
-        try {
-            if (callable != null) {
-                result = callable.call();
-            }
-            Thread.sleep(millis);
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-        return result;
-    }
-
-    protected void awaitTermination(long timeout, TimeUnit unit) {
-        try {
-            executorService.awaitTermination(1, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    protected String selectStringColumn(Connection connection, String sql) {
-        try {
-            try(Statement statement = connection.createStatement()) {
-                statement.setQueryTimeout(1);
-                ResultSet resultSet = statement.executeQuery(sql);
-                if(!resultSet.next()) {
-                    throw new IllegalArgumentException("There was no row to be selected!");
-                }
-                return resultSet.getString(1);
-            }
+          connection.close();
         } catch (SQLException e) {
-            throw new IllegalStateException(e);
+          throw new DataAccessException(e);
         }
+      }
     }
+  }
 
-    protected <T> T selectColumn(Connection connection, String sql, Class<T> clazz) {
-        return selectColumn(connection, sql, clazz, null);
+  protected LockType lockType() {
+    return LockType.LOCKS;
+  }
+
+  protected void awaitOnLatch(CountDownLatch latch) {
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      throw new IllegalStateException(e);
     }
+  }
 
-    protected <T> T selectColumn(Connection connection, String sql, Class<T> clazz, Duration timeout) {
-        try {
-            try(Statement statement = connection.createStatement()) {
-                if (timeout != null) {
-                    statement.setQueryTimeout((int) timeout.toSeconds());
-                }
-                ResultSet resultSet = statement.executeQuery(sql);
-                if(!resultSet.next()) {
-                    throw new IllegalArgumentException("There was no row to be selected!");
-                }
-                return clazz.cast(resultSet.getObject(1));
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
+  protected void sleep(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  protected <V> V sleep(int millis, Callable<V> callable) {
+    V result = null;
+    try {
+      if (callable != null) {
+        result = callable.call();
+      }
+      Thread.sleep(millis);
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+    return result;
+  }
+
+  protected void awaitTermination(long timeout, TimeUnit unit) {
+    try {
+      executorService.awaitTermination(1, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  protected String selectStringColumn(Connection connection, String sql) {
+    try {
+      try (Statement statement = connection.createStatement()) {
+        statement.setQueryTimeout(1);
+        ResultSet resultSet = statement.executeQuery(sql);
+        if (!resultSet.next()) {
+          throw new IllegalArgumentException("There was no row to be selected!");
         }
+        return resultSet.getString(1);
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
+  }
 
-    protected <T> List<T> selectColumnList(Connection connection, String sql, Class<T> clazz) {
-        List<T> result = new ArrayList<>();
-        try {
-            try(Statement statement = connection.createStatement()) {
-                statement.setQueryTimeout(1);
-                ResultSet resultSet = statement.executeQuery(sql);
-                while (resultSet.next()) {
-                    result.add(clazz.cast(resultSet.getObject(1)));
-                }
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
+  protected <T> T selectColumn(Connection connection, String sql, Class<T> clazz) {
+    return selectColumn(connection, sql, clazz, null);
+  }
+
+  protected <T> T selectColumn(
+      Connection connection, String sql, Class<T> clazz, Duration timeout) {
+    try {
+      try (Statement statement = connection.createStatement()) {
+        if (timeout != null) {
+          statement.setQueryTimeout((int) timeout.toSeconds());
         }
-        return result;
-    }
-
-    protected int update(Connection connection, String sql) {
-        try {
-            try(Statement statement = connection.createStatement()) {
-                statement.setQueryTimeout(1);
-                return statement.executeUpdate(sql);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
+        ResultSet resultSet = statement.executeQuery(sql);
+        if (!resultSet.next()) {
+          throw new IllegalArgumentException("There was no row to be selected!");
         }
+        return clazz.cast(resultSet.getObject(1));
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
+  }
 
-    protected void executeStatement(String sql) {
-        try (Connection connection = dataSource().getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.executeUpdate(sql);
-        } catch (SQLException e) {
-            LOGGER.error("Statement failed", e);
+  protected <T> List<T> selectColumnList(Connection connection, String sql, Class<T> clazz) {
+    List<T> result = new ArrayList<>();
+    try {
+      try (Statement statement = connection.createStatement()) {
+        statement.setQueryTimeout(1);
+        ResultSet resultSet = statement.executeQuery(sql);
+        while (resultSet.next()) {
+          result.add(clazz.cast(resultSet.getObject(1)));
         }
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
+    return result;
+  }
 
-    protected void executeStatement(Connection connection, String sql) {
-        try {
-            try(Statement statement = connection.createStatement()) {
-                statement.execute(sql);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
+  protected int update(Connection connection, String sql) {
+    try {
+      try (Statement statement = connection.createStatement()) {
+        statement.setQueryTimeout(1);
+        return statement.executeUpdate(sql);
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
+  }
 
-    protected void executeStatement(Connection connection, String sql, int timeout) {
-        try {
-            try(Statement statement = connection.createStatement()) {
-                statement.setQueryTimeout(timeout);
-                statement.execute(sql);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
+  protected void executeStatement(String sql) {
+    try (Connection connection = dataSource().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeUpdate(sql);
+    } catch (SQLException e) {
+      LOGGER.error("Statement failed", e);
     }
+  }
 
-    protected void executeStatement(Connection connection, String... sqls) {
-        try {
-            try (Statement statement = connection.createStatement()) {
-                for (String sql : sqls) {
-                    statement.execute(sql);
-                }
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
+  protected void executeStatement(Connection connection, String sql) {
+    try {
+      try (Statement statement = connection.createStatement()) {
+        statement.execute(sql);
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
     }
+  }
 
-    protected void executeStatement(EntityManager entityManager, String... sqls) {
-        Session session = entityManager.unwrap(Session.class);
+  protected void executeStatement(Connection connection, String sql, int timeout) {
+    try {
+      try (Statement statement = connection.createStatement()) {
+        statement.setQueryTimeout(timeout);
+        statement.execute(sql);
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  protected void executeStatement(Connection connection, String... sqls) {
+    try {
+      try (Statement statement = connection.createStatement()) {
         for (String sql : sqls) {
-            try {
-                session.doWork(connection -> {
-                    executeStatement(connection, sql);
-                });
-            } catch (Exception e) {
-                LOGGER.error(
-                    String.format("Error executing statement: %s", sql), e
-                );
+          statement.execute(sql);
+        }
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  protected void executeStatement(EntityManager entityManager, String... sqls) {
+    Session session = entityManager.unwrap(Session.class);
+    for (String sql : sqls) {
+      try {
+        session.doWork(
+            connection -> {
+              executeStatement(connection, sql);
+            });
+      } catch (Exception e) {
+        LOGGER.error(String.format("Error executing statement: %s", sql), e);
+      }
+    }
+  }
+
+  protected int update(Connection connection, String sql, Object[] params) {
+    try {
+      try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        statement.setQueryTimeout(1);
+        for (int i = 0; i < params.length; i++) {
+          statement.setObject(i + 1, params[i]);
+        }
+        return statement.executeUpdate();
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  protected int count(Connection connection, String sql) {
+    try {
+      try (Statement statement = connection.createStatement()) {
+        statement.setQueryTimeout(1);
+        ResultSet resultSet = statement.executeQuery(sql);
+        if (!resultSet.next()) {
+          throw new IllegalArgumentException("There was no row to be selected!");
+        }
+        return ((Number) resultSet.getObject(1)).intValue();
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  /**
+   * Set JDBC Connection or Statement timeout
+   *
+   * @param connection JDBC Connection time out
+   */
+  public void setJdbcTimeout(Connection connection) {
+    setJdbcTimeout(connection, 1000);
+  }
+
+  /**
+   * Set JDBC Connection or Statement timeout
+   *
+   * @param connection JDBC Connection time out
+   * @param timoutMillis millis to wait
+   */
+  public void setJdbcTimeout(Connection connection, long timoutMillis) {
+    try (Statement st = connection.createStatement()) {
+      DataSourceProvider dataSourceProvider = dataSourceProvider();
+
+      switch (dataSourceProvider.database()) {
+        case POSTGRESQL:
+          st.execute(String.format("SET statement_timeout TO %d", timoutMillis));
+          break;
+        case MYSQL:
+          st.execute(
+              String.format(
+                  "SET SESSION innodb_lock_wait_timeout = %d",
+                  TimeUnit.MILLISECONDS.toSeconds(timoutMillis)));
+          connection.setNetworkTimeout(Executors.newSingleThreadExecutor(), (int) timoutMillis);
+          break;
+        case SQLSERVER:
+          st.execute(String.format("SET LOCK_TIMEOUT %d", timoutMillis));
+          connection.setNetworkTimeout(Executors.newSingleThreadExecutor(), (int) timoutMillis);
+          break;
+        default:
+          try {
+            connection.setNetworkTimeout(Executors.newSingleThreadExecutor(), (int) timoutMillis);
+          } catch (Throwable ignore) {
+            ignore.fillInStackTrace();
+          }
+      }
+    } catch (SQLException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  protected String transactionId(EntityManager entityManager) {
+    return String.valueOf(
+        entityManager
+            .createNativeQuery(dataSourceProvider().queries().transactionId())
+            .getSingleResult());
+  }
+
+  protected void printEntityCacheRegionStatistics(Class<?> entityClass) {
+    printCacheRegionStatisticsEntries(entityClass.getName());
+  }
+
+  protected void printCollectionCacheRegionStatistics(Class<?> entityClass, String collection) {
+    printCacheRegionStatisticsEntries(entityClass.getName() + "." + collection);
+  }
+
+  protected void printQueryCacheRegionStatistics() {
+    printCacheRegionStatisticsEntries("default-query-results-region");
+  }
+
+  protected void printNaturalIdCacheRegionStatistics(Class<?> entityClass) {
+    printCacheRegionStatistics(entityClass.getName() + "##NaturalId");
+  }
+
+  protected void printCacheRegionStatistics(String region) {
+    printCacheRegionStatisticsEntries(region);
+  }
+
+  private void printCacheRegionStatisticsEntries(String regionName) {
+    SessionFactory sessionFactory = sessionFactory();
+    Statistics statistics = sessionFactory.getStatistics();
+    if (sessionFactory.getSessionFactoryOptions().isQueryCacheEnabled()) {
+      ReflectionUtils.invokeMethod(
+          statistics, "getQueryRegionStats", "default-query-results-region");
+    }
+
+    CacheRegionStatistics cacheRegionStatistics =
+        "default-query-results-region".equals(regionName)
+            ? statistics.getQueryRegionStatistics(regionName)
+            : statistics.getDomainDataRegionStatistics(regionName);
+
+    if (cacheRegionStatistics != null) {
+      AbstractRegion region = ReflectionUtils.getFieldValue(cacheRegionStatistics, "region");
+
+      StorageAccess storageAccess = getStorageAccess(region);
+      org.ehcache.core.Ehcache cache = getEhcache(storageAccess);
+
+      if (cache != null) {
+        StringBuilder cacheEntriesBuilder = new StringBuilder();
+        cacheEntriesBuilder.append("[");
+
+        boolean firstEntry = true;
+
+        Object onHeapStore = ReflectionUtils.getFieldValue(cache, "store");
+        Object onHeapStoreMap = ReflectionUtils.getFieldValue(onHeapStore, "map");
+        Iterable keySet = ReflectionUtils.invokeMethod(onHeapStoreMap, "keySet");
+        for (Object key : keySet) {
+          Object cacheValue = storageAccess.getFromCache(key, null);
+
+          if (!firstEntry) {
+            cacheEntriesBuilder.append(",\n");
+          } else {
+            cacheEntriesBuilder.append("\n");
+            firstEntry = false;
+          }
+          cacheEntriesBuilder.append("\t");
+
+          if (cacheValue instanceof QueryResultsCacheImpl.CacheItem) {
+            QueryResultsCacheImpl.CacheItem queryValue =
+                (QueryResultsCacheImpl.CacheItem) cacheValue;
+
+            cacheEntriesBuilder.append(
+                ToStringBuilder.reflectionToString(queryValue, ToStringStyle.SHORT_PREFIX_STYLE));
+          } else if (cacheValue instanceof StandardCacheEntryImpl) {
+            StandardCacheEntryImpl standardCacheEntry = (StandardCacheEntryImpl) cacheValue;
+
+            cacheEntriesBuilder.append(
+                ToStringBuilder.reflectionToString(
+                    standardCacheEntry, ToStringStyle.SHORT_PREFIX_STYLE));
+          } else if (cacheValue instanceof CollectionCacheEntry) {
+            CollectionCacheEntry collectionCacheEntry = (CollectionCacheEntry) cacheValue;
+
+            cacheEntriesBuilder.append(
+                ToStringBuilder.reflectionToString(
+                    collectionCacheEntry, ToStringStyle.SHORT_PREFIX_STYLE));
+          } else if (cacheValue instanceof AbstractReadWriteAccess.Item) {
+            AbstractReadWriteAccess.Item valueItem = (AbstractReadWriteAccess.Item) cacheValue;
+            Object value = valueItem.getValue();
+
+            if (value instanceof StandardCacheEntryImpl) {
+              StandardCacheEntryImpl standardCacheEntry = ((StandardCacheEntryImpl) value);
+              cacheEntriesBuilder.append(
+                  ToStringBuilder.reflectionToString(
+                      standardCacheEntry, ToStringStyle.SHORT_PREFIX_STYLE));
+            } else if (value.getClass().getPackageName().startsWith("java")) {
+              cacheEntriesBuilder.append(value);
+            } else {
+              cacheEntriesBuilder.append(
+                  ToStringBuilder.reflectionToString(
+                      valueItem.getValue(), ToStringStyle.SHORT_PREFIX_STYLE));
             }
-        }
-    }
-
-    protected int update(Connection connection, String sql, Object[] params) {
-        try {
-            try(PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setQueryTimeout(1);
-                for (int i = 0; i < params.length; i++) {
-                    statement.setObject(i + 1, params[i]);
-                }
-                return statement.executeUpdate();
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    protected int count(Connection connection, String sql) {
-        try {
-            try(Statement statement = connection.createStatement()) {
-                statement.setQueryTimeout(1);
-                ResultSet resultSet = statement.executeQuery(sql);
-                if(!resultSet.next()) {
-                    throw new IllegalArgumentException("There was no row to be selected!");
-                }
-                return ((Number) resultSet.getObject(1)).intValue();
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    /**
-     * Set JDBC Connection or Statement timeout
-     *
-     * @param connection JDBC Connection time out
-     */
-    public void setJdbcTimeout(Connection connection) {
-        setJdbcTimeout(connection, 1000);
-    }
-
-    /**
-     * Set JDBC Connection or Statement timeout
-     *
-     * @param connection JDBC Connection time out
-     * @param timoutMillis millis to wait
-     */
-    public void setJdbcTimeout(Connection connection, long timoutMillis) {
-        try (Statement st = connection.createStatement()) {
-            DataSourceProvider dataSourceProvider = dataSourceProvider();
-
-            switch (dataSourceProvider.database()) {
-                case POSTGRESQL:
-                    st.execute(String.format("SET statement_timeout TO %d", timoutMillis));
-                    break;
-                case MYSQL:
-                    st.execute(String.format("SET SESSION innodb_lock_wait_timeout = %d", TimeUnit.MILLISECONDS.toSeconds(timoutMillis)));
-                    connection.setNetworkTimeout(Executors.newSingleThreadExecutor(), (int) timoutMillis);
-                    break;
-                case SQLSERVER:
-                    st.execute(String.format("SET LOCK_TIMEOUT %d", timoutMillis));
-                    connection.setNetworkTimeout(Executors.newSingleThreadExecutor(), (int) timoutMillis);
-                    break;
-                default:
-                    try {
-                        connection.setNetworkTimeout(Executors.newSingleThreadExecutor(), (int) timoutMillis);
-                    } catch (Throwable ignore) {
-                        ignore.fillInStackTrace();
-                    }
-            }
-        } catch (SQLException e) {
-            fail(e.getMessage());
-        }
-    }
-
-    protected String transactionId(EntityManager entityManager) {
-        return String.valueOf(
-            entityManager.createNativeQuery(
-                dataSourceProvider()
-                .queries()
-                .transactionId()
-            )
-            .getSingleResult()
-        );
-    }
-
-    protected void printEntityCacheRegionStatistics(Class<?> entityClass) {
-        printCacheRegionStatisticsEntries(entityClass.getName());
-    }
-
-    protected void printCollectionCacheRegionStatistics(Class<?> entityClass, String collection) {
-        printCacheRegionStatisticsEntries(entityClass.getName() + "." + collection);
-    }
-
-    protected void printQueryCacheRegionStatistics() {
-        printCacheRegionStatisticsEntries("default-query-results-region");
-    }
-
-    protected void printNaturalIdCacheRegionStatistics(Class<?> entityClass) {
-        printCacheRegionStatistics(entityClass.getName() + "##NaturalId");
-    }
-
-    protected void printCacheRegionStatistics(String region) {
-        printCacheRegionStatisticsEntries(region);
-    }
-
-    private void printCacheRegionStatisticsEntries(String regionName) {
-        SessionFactory sessionFactory = sessionFactory();
-        Statistics statistics = sessionFactory.getStatistics();
-        if (sessionFactory.getSessionFactoryOptions().isQueryCacheEnabled()) {
-            ReflectionUtils.invokeMethod(statistics, "getQueryRegionStats", "default-query-results-region");
+          } else if (cacheValue instanceof AbstractReadWriteAccess.Lockable) {
+            cacheEntriesBuilder.append(
+                ToStringBuilder.reflectionToString(cacheValue, ToStringStyle.SHORT_PREFIX_STYLE));
+          }
         }
 
-        CacheRegionStatistics cacheRegionStatistics = "default-query-results-region".equals(regionName) ?
-            statistics.getQueryRegionStatistics(regionName) :
-            statistics.getDomainDataRegionStatistics(regionName);
+        cacheEntriesBuilder.append("\n]");
 
-        if (cacheRegionStatistics != null) {
-            AbstractRegion region = ReflectionUtils.getFieldValue(cacheRegionStatistics, "region");
+        LOGGER.debug(
+            "\nRegion: {},\nStatistics: {},\nEntries: {}",
+            regionName,
+            cacheRegionStatistics,
+            cacheEntriesBuilder);
+      }
+    }
+  }
 
-            StorageAccess storageAccess = getStorageAccess(region);
-            org.ehcache.core.Ehcache cache = getEhcache(storageAccess);
+  private org.ehcache.core.Ehcache getEhcache(StorageAccess storageAccess) {
+    Object cacheHolder = storageAccess;
+    if (storageAccess instanceof JCacheAccessImpl) {
+      cacheHolder = ReflectionUtils.getFieldValue(storageAccess, "underlyingCache");
+    }
+    return ReflectionUtils.getFieldValue(cacheHolder, "ehCache");
+  }
 
-            if (cache != null) {
-                StringBuilder cacheEntriesBuilder = new StringBuilder();
-                cacheEntriesBuilder.append("[");
+  private StorageAccess getStorageAccess(AbstractRegion region) {
+    if (region instanceof DirectAccessRegionTemplate) {
+      DirectAccessRegionTemplate directAccessRegionTemplate = (DirectAccessRegionTemplate) region;
+      return directAccessRegionTemplate.getStorageAccess();
+    } else if (region instanceof DomainDataRegionTemplate) {
+      DomainDataRegionTemplate domainDataRegionTemplate = (DomainDataRegionTemplate) region;
+      return domainDataRegionTemplate.getCacheStorageAccess();
+    }
+    throw new IllegalArgumentException("Unsupported region: " + region);
+  }
 
-                boolean firstEntry = true;
+  public static String stringValue(Object value) {
+    return value.toString();
+  }
 
-                Object onHeapStore = ReflectionUtils.getFieldValue(cache, "store");
-                Object onHeapStoreMap = ReflectionUtils.getFieldValue(onHeapStore, "map");
-                Iterable keySet = ReflectionUtils.invokeMethod(onHeapStoreMap, "keySet");
-                for (Object key : keySet) {
-                    Object cacheValue = storageAccess.getFromCache(key, null);
+  public static int intValue(Object number) {
+    return ((Number) number).intValue();
+  }
 
-                    if (!firstEntry) {
-                        cacheEntriesBuilder.append(",\n");
-                    } else {
-                        cacheEntriesBuilder.append("\n");
-                        firstEntry = false;
-                    }
-                    cacheEntriesBuilder.append("\t");
+  public static long longValue(Object number) {
+    if (number instanceof String) {
+      return Long.parseLong((String) number);
+    }
+    return ((Number) number).longValue();
+  }
 
-                    if (cacheValue instanceof QueryResultsCacheImpl.CacheItem) {
-                        QueryResultsCacheImpl.CacheItem queryValue = (QueryResultsCacheImpl.CacheItem) cacheValue;
+  public static double doubleValue(Object number) {
+    return ((Number) number).doubleValue();
+  }
 
-                        cacheEntriesBuilder.append(
-                            ToStringBuilder.reflectionToString(queryValue, ToStringStyle.SHORT_PREFIX_STYLE)
-                        );
-                    } else if (cacheValue instanceof StandardCacheEntryImpl) {
-                        StandardCacheEntryImpl standardCacheEntry = (StandardCacheEntryImpl) cacheValue;
+  public static URL urlValue(String url) {
+    try {
+      return url != null ? new URL(url) : null;
+    } catch (MalformedURLException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
 
-                        cacheEntriesBuilder.append(
-                            ToStringBuilder.reflectionToString(standardCacheEntry, ToStringStyle.SHORT_PREFIX_STYLE)
-                        );
-                    } else if (cacheValue instanceof CollectionCacheEntry) {
-                        CollectionCacheEntry collectionCacheEntry = (CollectionCacheEntry) cacheValue;
+  public static LocalDateTime localDateTimeValue(Object value) {
+    return (LocalDateTime) value;
+  }
 
-                        cacheEntriesBuilder.append(
-                            ToStringBuilder.reflectionToString(collectionCacheEntry, ToStringStyle.SHORT_PREFIX_STYLE)
-                        );
-                    } else if (cacheValue instanceof AbstractReadWriteAccess.Item) {
-                        AbstractReadWriteAccess.Item valueItem = (AbstractReadWriteAccess.Item) cacheValue;
-                        Object value = valueItem.getValue();
+  protected List<Map<String, String>> parseResultSet(ResultSet resultSet) {
+    List<Map<String, String>> rows = new ArrayList<>();
 
-                        if (value instanceof StandardCacheEntryImpl) {
-                            StandardCacheEntryImpl standardCacheEntry = ((StandardCacheEntryImpl) value);
-                            cacheEntriesBuilder.append(
-                                ToStringBuilder.reflectionToString(standardCacheEntry, ToStringStyle.SHORT_PREFIX_STYLE)
-                            );
-                        } else if(value.getClass().getPackageName().startsWith("java")) {
-                            cacheEntriesBuilder.append(value);
-                        } else {
-                            cacheEntriesBuilder.append(
-                                ToStringBuilder.reflectionToString(valueItem.getValue(), ToStringStyle.SHORT_PREFIX_STYLE)
-                            );
-                        }
-                    } else if (cacheValue instanceof AbstractReadWriteAccess.Lockable) {
-                        cacheEntriesBuilder.append(
-                            ToStringBuilder.reflectionToString(cacheValue, ToStringStyle.SHORT_PREFIX_STYLE)
-                        );
-                    }
-                }
+    try {
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int columnCount = metaData.getColumnCount();
 
-                cacheEntriesBuilder.append("\n]");
-
-                LOGGER.debug(
-                    "\nRegion: {},\nStatistics: {},\nEntries: {}",
-                    regionName,
-                    cacheRegionStatistics,
-                    cacheEntriesBuilder
-                );
-            }
+      while (resultSet.next()) {
+        Map<String, String> row = new LinkedHashMap<>();
+        for (int i = 1; i <= columnCount; i++) {
+          row.put(metaData.getColumnName(i), resultSet.getString(i));
         }
+        rows.add(row);
+      }
+    } catch (SQLException e) {
+      throw new IllegalArgumentException(e);
     }
 
-    private org.ehcache.core.Ehcache getEhcache(StorageAccess storageAccess) {
-        Object cacheHolder = storageAccess;
-        if(storageAccess instanceof JCacheAccessImpl) {
-            cacheHolder = ReflectionUtils.getFieldValue(storageAccess, "underlyingCache");
+    return rows;
+  }
+
+  protected String resultSetToString(ResultSet resultSet) {
+    Table.Builder tableBuilder = new Table.Builder();
+
+    try {
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int columnCount = metaData.getColumnCount();
+
+      String[] columnNames = new String[columnCount];
+
+      for (int i = 0; i < columnCount; i++) {
+        columnNames[i] = metaData.getColumnName(i + 1);
+      }
+
+      tableBuilder.addRow(columnNames);
+
+      while (resultSet.next()) {
+        String[] columnValues = new String[columnCount];
+        for (int i = 0; i < columnCount; i++) {
+          columnValues[i] = resultSet.getString(i + 1);
         }
-        return ReflectionUtils.getFieldValue(cacheHolder, "ehCache");
+        tableBuilder.addRow(columnValues);
+      }
+    } catch (SQLException e) {
+      throw new IllegalArgumentException(e);
     }
 
-
-    private StorageAccess getStorageAccess(AbstractRegion region) {
-        if(region instanceof DirectAccessRegionTemplate) {
-            DirectAccessRegionTemplate directAccessRegionTemplate = (DirectAccessRegionTemplate) region;
-            return directAccessRegionTemplate.getStorageAccess();
-        }
-        else if(region instanceof DomainDataRegionTemplate) {
-            DomainDataRegionTemplate domainDataRegionTemplate = (DomainDataRegionTemplate) region;
-            return domainDataRegionTemplate.getCacheStorageAccess();
-        }
-        throw new IllegalArgumentException("Unsupported region: " + region);
-    }
-
-    public static String stringValue(Object value) {
-        return value.toString();
-    }
-
-    public static int intValue(Object number) {
-        return ((Number) number).intValue();
-    }
-
-    public static long longValue(Object number) {
-        if(number instanceof String) {
-            return Long.parseLong((String) number);
-        }
-        return ((Number) number).longValue();
-    }
-
-    public static double doubleValue(Object number) {
-        return ((Number) number).doubleValue();
-    }
-
-    public static URL urlValue(String url) {
-        try {
-            return url != null ? new URL(url) : null;
-        } catch (MalformedURLException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
-
-    public static LocalDateTime localDateTimeValue(Object value) {
-        return (LocalDateTime) value;
-    }
-
-    protected List<Map<String, String>> parseResultSet(ResultSet resultSet) {
-        List<Map<String, String>> rows = new ArrayList<>();
-
-        try {
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            int columnCount = metaData.getColumnCount();
-
-            while (resultSet.next()) {
-                Map<String, String> row = new LinkedHashMap<>();
-                for (int i = 1; i <= columnCount; i++) {
-                    row.put(metaData.getColumnName(i), resultSet.getString(i));
-                }
-                rows.add(row);
-            }
-        } catch (SQLException e) {
-            throw new IllegalArgumentException(e);
-        }
-
-        return rows;
-    }
-
-    protected String resultSetToString(ResultSet resultSet) {
-        Table.Builder tableBuilder = new Table.Builder();
-
-        try {
-            ResultSetMetaData metaData = resultSet.getMetaData();
-            int columnCount = metaData.getColumnCount();
-
-            String[] columnNames = new String[columnCount];
-
-            for (int i = 0; i < columnCount; i++) {
-                columnNames[i] = metaData.getColumnName(i + 1);
-            }
-
-            tableBuilder.addRow(columnNames);
-
-            while (resultSet.next()) {
-                String[] columnValues = new String[columnCount];
-                for (int i = 0; i < columnCount; i++) {
-                    columnValues[i] = resultSet.getString(i + 1);
-                }
-                tableBuilder.addRow(columnValues);
-            }
-        } catch (SQLException e) {
-            throw new IllegalArgumentException(e);
-        }
-
-        return tableBuilder.build().serialize();
-    }
+    return tableBuilder.build().serialize();
+  }
 }

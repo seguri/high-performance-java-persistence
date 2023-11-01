@@ -10,35 +10,33 @@ import jakarta.persistence.Id;
 @Entity(name = "Country")
 public class Country {
 
-	@Id
-	@GeneratedValue
-	private Long id;
+  @Id @GeneratedValue private Long id;
 
-	private String name;
+  private String name;
 
-	private String locale;
+  private String locale;
 
-	public Long getId() {
-		return id;
-	}
+  public Long getId() {
+    return id;
+  }
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+  public void setId(Long id) {
+    this.id = id;
+  }
 
-	public String getName() {
-		return name;
-	}
+  public String getName() {
+    return name;
+  }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+  public void setName(String name) {
+    this.name = name;
+  }
 
-	public String getLocale() {
-		return locale;
-	}
+  public String getLocale() {
+    return locale;
+  }
 
-	public void setLocale(String locale) {
-		this.locale = locale;
-	}
+  public void setLocale(String locale) {
+    this.locale = locale;
+  }
 }

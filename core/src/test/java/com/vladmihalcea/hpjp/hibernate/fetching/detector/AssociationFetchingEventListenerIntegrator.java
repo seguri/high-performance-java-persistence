@@ -12,37 +12,29 @@ import org.hibernate.service.spi.SessionFactoryServiceRegistry;
  */
 public class AssociationFetchingEventListenerIntegrator implements Integrator {
 
-    public static final AssociationFetchingEventListenerIntegrator INSTANCE = new AssociationFetchingEventListenerIntegrator();
+  public static final AssociationFetchingEventListenerIntegrator INSTANCE =
+      new AssociationFetchingEventListenerIntegrator();
 
-    @Override
-    public void integrate(
-        Metadata metadata,
-        SessionFactoryImplementor sessionFactory,
-        SessionFactoryServiceRegistry serviceRegistry) {
+  @Override
+  public void integrate(
+      Metadata metadata,
+      SessionFactoryImplementor sessionFactory,
+      SessionFactoryServiceRegistry serviceRegistry) {
 
-        final EventListenerRegistry eventListenerRegistry =
-            serviceRegistry.getService(EventListenerRegistry.class);
+    final EventListenerRegistry eventListenerRegistry =
+        serviceRegistry.getService(EventListenerRegistry.class);
 
-        eventListenerRegistry.prependListeners(
-            EventType.LOAD,
-            AssociationFetchPreLoadEventListener.INSTANCE
-        );
+    eventListenerRegistry.prependListeners(
+        EventType.LOAD, AssociationFetchPreLoadEventListener.INSTANCE);
 
-        eventListenerRegistry.appendListeners(
-            EventType.LOAD,
-            AssociationFetchLoadEventListener.INSTANCE
-        );
+    eventListenerRegistry.appendListeners(
+        EventType.LOAD, AssociationFetchLoadEventListener.INSTANCE);
 
-        eventListenerRegistry.appendListeners(
-            EventType.POST_LOAD,
-            AssociationFetchPostLoadEventListener.INSTANCE
-        );
-    }
+    eventListenerRegistry.appendListeners(
+        EventType.POST_LOAD, AssociationFetchPostLoadEventListener.INSTANCE);
+  }
 
-    @Override
-    public void disintegrate(
-        SessionFactoryImplementor sessionFactory,
-        SessionFactoryServiceRegistry serviceRegistry) {
-
-    }
+  @Override
+  public void disintegrate(
+      SessionFactoryImplementor sessionFactory, SessionFactoryServiceRegistry serviceRegistry) {}
 }

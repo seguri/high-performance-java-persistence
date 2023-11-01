@@ -1,10 +1,8 @@
 package com.vladmihalcea.hpjp.hibernate.query.plan;
 
-import com.vladmihalcea.hpjp.util.AbstractTest;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
+import com.vladmihalcea.hpjp.util.AbstractTest;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Id;
@@ -16,170 +14,180 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.stream.IntStream;
-
-import static org.junit.Assert.assertEquals;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
 public class DefaultInQueryPlanCacheTest extends AbstractTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[]{
-            Post.class
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Post.class};
+  }
 
-    @Override
-    protected void additionalProperties(Properties properties) {
-        properties.put("hibernate.jdbc.batch_size", "50");
-        properties.put("hibernate.order_inserts", "true");
-        properties.put("hibernate.generate_statistics", "true");
-    }
+  @Override
+  protected void additionalProperties(Properties properties) {
+    properties.put("hibernate.jdbc.batch_size", "50");
+    properties.put("hibernate.order_inserts", "true");
+    properties.put("hibernate.generate_statistics", "true");
+  }
 
-    @Override
-    protected void afterInit() {
-        doInJPA(entityManager -> {
-            for (int i = 1; i <= 15; i++) {
-                Post post = new Post();
-                post.setId(i);
-                post.setTitle(String.format("Post no. %d", i));
+  @Override
+  protected void afterInit() {
+    doInJPA(
+        entityManager -> {
+          for (int i = 1; i <= 15; i++) {
+            Post post = new Post();
+            post.setId(i);
+            post.setTitle(String.format("Post no. %d", i));
 
-                entityManager.persist(post);
-            }
+            entityManager.persist(post);
+          }
         });
-    }
+  }
 
+  @Test
+  public void testInQueryCachePlan() {
+    SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
+    Statistics statistics = sessionFactory.getStatistics();
+    statistics.clear();
 
-    @Test
-    public void testInQueryCachePlan() {
-        SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
-        Statistics statistics = sessionFactory.getStatistics();
-        statistics.clear();
-
-        doInJPA(entityManager -> {
-            for (int i = 1; i < 16; i++) {
-                getPostByIds(
-                    entityManager,
-                    IntStream.range(1, i + 1).boxed().toArray(Integer[]::new)
-                );
-            }
+    doInJPA(
+        entityManager -> {
+          for (int i = 1; i < 16; i++) {
+            getPostByIds(entityManager, IntStream.range(1, i + 1).boxed().toArray(Integer[]::new));
+          }
         });
 
-        LOGGER.info("Hibernate 6 generates a single plan now!");
-        assertEquals(1L, statistics.getQueryPlanCacheMissCount());
+    LOGGER.info("Hibernate 6 generates a single plan now!");
+    assertEquals(1L, statistics.getQueryPlanCacheMissCount());
 
-        for (String query : statistics.getQueries()) {
-            LOGGER.info("Executed query: {}", query);
-        }
+    for (String query : statistics.getQueries()) {
+      LOGGER.info("Executed query: {}", query);
     }
+  }
 
-    @Test
-    public void testJPQL() {
-        SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
-        Statistics statistics = sessionFactory.getStatistics();
-        statistics.clear();
+  @Test
+  public void testJPQL() {
+    SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
+    Statistics statistics = sessionFactory.getStatistics();
+    statistics.clear();
 
-        doInJPA(entityManager -> {
-            List<Post> posts = entityManager.createQuery("""
+    doInJPA(
+        entityManager -> {
+          List<Post> posts =
+              entityManager
+                  .createQuery(
+                      """
                 select p
                 from Post p
                 where p.id in :ids
-                """, Post.class)
-            .setParameter("ids", Arrays.asList(1, 2, 3))
-            .getResultList();
+                """,
+                      Post.class)
+                  .setParameter("ids", Arrays.asList(1, 2, 3))
+                  .getResultList();
         });
 
-        for (String query : statistics.getQueries()) {
-            LOGGER.info("Executed query: {}", query);
-        }
+    for (String query : statistics.getQueries()) {
+      LOGGER.info("Executed query: {}", query);
     }
-    
-    @Test
-    public void testCriteriaAPI() {
-        SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
-        Statistics statistics = sessionFactory.getStatistics();
-        statistics.clear();
+  }
 
-        doInJPA(entityManager -> {
-            CriteriaBuilder builder = entityManager.getCriteriaBuilder();
-            CriteriaQuery<Post> criteria = builder.createQuery(Post.class);
-            Root<Post> fromPost = criteria.from(Post.class);
+  @Test
+  public void testCriteriaAPI() {
+    SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
+    Statistics statistics = sessionFactory.getStatistics();
+    statistics.clear();
 
-            criteria.where(builder.in(fromPost.get("id")).value(Arrays.asList(1, 2, 3)));
-            List<Post> posts = entityManager.createQuery(criteria).getResultList();
+    doInJPA(
+        entityManager -> {
+          CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+          CriteriaQuery<Post> criteria = builder.createQuery(Post.class);
+          Root<Post> fromPost = criteria.from(Post.class);
+
+          criteria.where(builder.in(fromPost.get("id")).value(Arrays.asList(1, 2, 3)));
+          List<Post> posts = entityManager.createQuery(criteria).getResultList();
         });
 
-        for (String query : statistics.getQueries()) {
-            LOGGER.info("Executed query: {}", query);
-        }
+    for (String query : statistics.getQueries()) {
+      LOGGER.info("Executed query: {}", query);
     }
+  }
 
-    @Test
-    public void testSQLQueryCachePlan() {
-        SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
-        Statistics statistics = sessionFactory.getStatistics();
-        statistics.clear();
+  @Test
+  public void testSQLQueryCachePlan() {
+    SessionFactory sessionFactory = entityManagerFactory().unwrap(SessionFactory.class);
+    Statistics statistics = sessionFactory.getStatistics();
+    statistics.clear();
 
-        doInJPA(entityManager -> {
-            for (int i = 1; i < 16; i++) {
-                List<Post> posts = entityManager.createNativeQuery("""
+    doInJPA(
+        entityManager -> {
+          for (int i = 1; i < 16; i++) {
+            List<Post> posts =
+                entityManager
+                    .createNativeQuery(
+                        """
                     select p.*
                     from post p
                     where p.id = :id
-                    """, Post.class)
-                .setParameter("id", 1)
-                .getResultList();
-            }
+                    """,
+                        Post.class)
+                    .setParameter("id", 1)
+                    .getResultList();
+          }
         });
 
-        assertEquals(1, statistics.getQueryPlanCacheMissCount());
+    assertEquals(1, statistics.getQueryPlanCacheMissCount());
 
-        for (String query : statistics.getQueries()) {
-            LOGGER.info("Executed query: {}", query);
-        }
+    for (String query : statistics.getQueries()) {
+      LOGGER.info("Executed query: {}", query);
     }
+  }
 
-    private List<Post> getPostByIds(EntityManager entityManager, Integer... ids) {
-        return entityManager.createQuery("""
+  private List<Post> getPostByIds(EntityManager entityManager, Integer... ids) {
+    return entityManager
+        .createQuery(
+            """
             select p
             from Post p
             where p.id in :ids
-            """, Post.class)
+            """,
+            Post.class)
         .setParameter("ids", Arrays.asList(ids))
         .getResultList();
+  }
+
+  @Entity(name = "Post")
+  @Table(name = "post")
+  public static class Post {
+
+    @Id private Integer id;
+
+    private String title;
+
+    public Post() {}
+
+    public Post(String title) {
+      this.title = title;
     }
 
-    @Entity(name = "Post")
-    @Table(name = "post")
-    public static class Post {
-
-        @Id
-        private Integer id;
-
-        private String title;
-
-        public Post() {}
-
-        public Post(String title) {
-            this.title = title;
-        }
-
-        public Integer getId() {
-            return id;
-        }
-
-        public void setId(Integer id) {
-            this.id = id;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
+    public Integer getId() {
+      return id;
     }
+
+    public void setId(Integer id) {
+      this.id = id;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public void setTitle(String title) {
+      this.title = title;
+    }
+  }
 }

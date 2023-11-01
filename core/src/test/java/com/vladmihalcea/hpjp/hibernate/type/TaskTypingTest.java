@@ -11,17 +11,15 @@ import org.junit.Test;
  */
 public class TaskTypingTest extends AbstractPostgreSQLIntegrationTest {
 
-    private TaskEntityProvider entityProvider = new TaskEntityProvider();
+  private TaskEntityProvider entityProvider = new TaskEntityProvider();
 
-    @Override
-    protected Class<?>[] entities() {
-        return entityProvider.entities();
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return entityProvider.entities();
+  }
 
-    @Test
-    public void testJdbcOneToManyMapping() {
-        doInJDBC(connection -> {
-
-        });
-    }
+  @Test
+  public void testJdbcOneToManyMapping() {
+    doInJDBC(connection -> {});
+  }
 }

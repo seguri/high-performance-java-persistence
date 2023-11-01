@@ -5,5 +5,5 @@ package com.vladmihalcea.hpjp.util.providers.queries;
  */
 public interface Queries {
 
-    String transactionId();
+  String transactionId();
 }

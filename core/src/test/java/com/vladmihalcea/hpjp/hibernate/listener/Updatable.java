@@ -7,7 +7,7 @@ import java.util.Date;
  */
 public interface Updatable {
 
-    void setTimestamp(Date timestamp);
+  void setTimestamp(Date timestamp);
 
-    Date getTimestamp();
+  Date getTimestamp();
 }

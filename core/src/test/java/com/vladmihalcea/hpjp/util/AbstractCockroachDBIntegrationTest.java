@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.util.providers.Database;
  */
 public abstract class AbstractCockroachDBIntegrationTest extends AbstractTest {
 
-    @Override
-    protected Database database() {
-        return Database.COCKROACHDB;
-    }
+  @Override
+  protected Database database() {
+    return Database.COCKROACHDB;
+  }
 }

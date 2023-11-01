@@ -1,7 +1,6 @@
 package com.vladmihalcea.hpjp.util.providers.entity;
 
 import com.vladmihalcea.hpjp.util.EntityProvider;
-
 import jakarta.persistence.*;
 import java.util.Date;
 
@@ -10,40 +9,36 @@ import java.util.Date;
  */
 public class TaskEntityProvider implements EntityProvider {
 
-    public enum StatusType {
-        TO_D0,
-        DONE,
-        FAILED
-    }
+  public enum StatusType {
+    TO_D0,
+    DONE,
+    FAILED
+  }
 
-    @Override
-    public Class<?>[] entities() {
-        return new Class<?>[]{
-            Task.class
-        };
-    }
+  @Override
+  public Class<?>[] entities() {
+    return new Class<?>[] {Task.class};
+  }
 
-    @Entity(name = "Task")
-    @Table(name = "task", indexes = @Index(name = "IDX_task_status", columnList = "status"))
-    public static class Task {
+  @Entity(name = "Task")
+  @Table(name = "task", indexes = @Index(name = "IDX_task_status", columnList = "status"))
+  public static class Task {
 
-        @Id
-        private Long id;
+    @Id private Long id;
 
-        @Enumerated(EnumType.STRING)
-        private StatusType status;
+    @Enumerated(EnumType.STRING)
+    private StatusType status;
 
-        @Embedded
-        private Change change;
-    }
+    @Embedded private Change change;
+  }
 
-    @Embeddable
-    public static class Change {
+  @Embeddable
+  public static class Change {
 
-        @Column(name = "changed_on")
-        private Date changedOn;
+    @Column(name = "changed_on")
+    private Date changedOn;
 
-        @Column(name = "created_by")
-        private String changedBy;
-    }
+    @Column(name = "created_by")
+    private String changedBy;
+  }
 }

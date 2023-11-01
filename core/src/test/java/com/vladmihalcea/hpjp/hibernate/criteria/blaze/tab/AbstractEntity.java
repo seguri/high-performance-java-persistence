@@ -1,20 +1,18 @@
 package com.vladmihalcea.hpjp.hibernate.criteria.blaze.tab;
 
-import org.springframework.lang.Nullable;
-
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Transient;
 import java.io.Serializable;
+import org.springframework.lang.Nullable;
 
 @MappedSuperclass
 public abstract class AbstractEntity<I> implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  @Transient
-  private boolean isNew = true;
+  @Transient private boolean isNew = true;
 
   public boolean isNew() {
     return isNew;

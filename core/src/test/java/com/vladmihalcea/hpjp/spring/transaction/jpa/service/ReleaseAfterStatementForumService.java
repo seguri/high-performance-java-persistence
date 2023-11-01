@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 public interface ReleaseAfterStatementForumService {
 
-    Post newPost(String title);
+  Post newPost(String title);
 
-    PostDTO savePostTitle(Long id, String title);
+  PostDTO savePostTitle(Long id, String title);
 }

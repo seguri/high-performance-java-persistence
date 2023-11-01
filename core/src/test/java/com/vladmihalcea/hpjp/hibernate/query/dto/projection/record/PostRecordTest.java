@@ -1,12 +1,10 @@
 package com.vladmihalcea.hpjp.hibernate.query.dto.projection.record;
 
-import com.vladmihalcea.hpjp.util.AbstractTest;
-import io.hypersistence.utils.hibernate.type.util.ClassImportIntegrator;
-import io.hypersistence.utils.hibernate.query.ListResultTransformer;
-import org.hibernate.jpa.boot.spi.IntegratorProvider;
-import org.hibernate.query.Query;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
+import com.vladmihalcea.hpjp.util.AbstractTest;
+import io.hypersistence.utils.hibernate.query.ListResultTransformer;
+import io.hypersistence.utils.hibernate.type.util.ClassImportIntegrator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -15,108 +13,91 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-
-import static org.junit.Assert.assertEquals;
+import org.hibernate.jpa.boot.spi.IntegratorProvider;
+import org.hibernate.query.Query;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
 public class PostRecordTest extends AbstractTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[]{
-            Post.class,
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {
+      Post.class,
+    };
+  }
 
-    @Override
-    protected void additionalProperties(Properties properties) {
-        properties.put(
-            "hibernate.integrator_provider",
-            (IntegratorProvider) () -> Collections.singletonList(
-                new ClassImportIntegrator(
-                    List.of(
-                        AuditInfo.class,
-                        PostInfo.class
-                    )
-                )
-            )
-        );
-    }
+  @Override
+  protected void additionalProperties(Properties properties) {
+    properties.put(
+        "hibernate.integrator_provider",
+        (IntegratorProvider)
+            () ->
+                Collections.singletonList(
+                    new ClassImportIntegrator(List.of(AuditInfo.class, PostInfo.class))));
+  }
 
-    @Override
-    public void afterInit() {
-        doInJPA(entityManager -> {
-            entityManager.persist(
-                new Post()
-                    .setId(1L)
-                    .setTitle("High-Performance Java Persistence")
-                    .setCreatedBy("Vlad Mihalcea")
-                    .setCreatedOn(
-                        LocalDateTime.of(2016, 11, 2, 12, 0, 0)
-                    )
-                    .setUpdatedBy("Vlad Mihalcea")
-                    .setUpdatedOn(
-                        LocalDateTime.now()
-                    )
-            );
-            entityManager.persist(
-                new Post()
-                    .setId(2L)
-                    .setTitle("Hypersistence Optimizer")
-                    .setCreatedBy("Vlad Mihalcea")
-                    .setCreatedOn(
-                        LocalDateTime.of(2020, 3, 19, 12, 0, 0)
-                    )
-                    .setUpdatedBy("Vlad Mihalcea")
-                    .setUpdatedOn(
-                        LocalDateTime.now()
-                    )
-            );
+  @Override
+  public void afterInit() {
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(
+              new Post()
+                  .setId(1L)
+                  .setTitle("High-Performance Java Persistence")
+                  .setCreatedBy("Vlad Mihalcea")
+                  .setCreatedOn(LocalDateTime.of(2016, 11, 2, 12, 0, 0))
+                  .setUpdatedBy("Vlad Mihalcea")
+                  .setUpdatedOn(LocalDateTime.now()));
+          entityManager.persist(
+              new Post()
+                  .setId(2L)
+                  .setTitle("Hypersistence Optimizer")
+                  .setCreatedBy("Vlad Mihalcea")
+                  .setCreatedOn(LocalDateTime.of(2020, 3, 19, 12, 0, 0))
+                  .setUpdatedBy("Vlad Mihalcea")
+                  .setUpdatedOn(LocalDateTime.now()));
         });
-    }
+  }
 
-    @Test
-    public void testRecord() {
-        doInJPA(entityManager -> {
-            PostInfo postInfo = new PostInfo(
-                1L,
-                "High-Performance Java Persistence",
-                new AuditInfo(
-                    LocalDateTime.of(2016, 11, 2, 12, 0, 0),
-                    "Vlad Mihalcea",
-                    LocalDateTime.now(),
-                    "Vlad Mihalcea"
-                )
-            );
+  @Test
+  public void testRecord() {
+    doInJPA(
+        entityManager -> {
+          PostInfo postInfo =
+              new PostInfo(
+                  1L,
+                  "High-Performance Java Persistence",
+                  new AuditInfo(
+                      LocalDateTime.of(2016, 11, 2, 12, 0, 0),
+                      "Vlad Mihalcea",
+                      LocalDateTime.now(),
+                      "Vlad Mihalcea"));
 
-            assertEquals(
-                1L, postInfo.id().longValue()
-            );
+          assertEquals(1L, postInfo.id().longValue());
 
-            assertEquals(
-                "High-Performance Java Persistence", postInfo.title()
-            );
+          assertEquals("High-Performance Java Persistence", postInfo.title());
 
-            assertEquals(
-                LocalDateTime.of(2016, 11, 2, 12, 0, 0), postInfo.auditInfo().createdOn()
-            );
+          assertEquals(LocalDateTime.of(2016, 11, 2, 12, 0, 0), postInfo.auditInfo().createdOn());
 
-            assertEquals(
-                "Vlad Mihalcea", postInfo.auditInfo().createdBy()
-            );
+          assertEquals("Vlad Mihalcea", postInfo.auditInfo().createdBy());
 
-            LOGGER.info("Audit info:\n{}", postInfo.auditInfo());
-            LOGGER.info("Post info:\n{}", postInfo);
+          LOGGER.info("Audit info:\n{}", postInfo.auditInfo());
+          LOGGER.info("Post info:\n{}", postInfo);
         });
-    }
+  }
 
-    @Test
-    public void testRecordDTO() {
-        doInJPA(entityManager -> {
-            AuditInfo auditInfo = entityManager.createQuery("""
-                select 
+  @Test
+  public void testRecordDTO() {
+    doInJPA(
+        entityManager -> {
+          AuditInfo auditInfo =
+              entityManager
+                  .createQuery(
+                      """
+                select
                     new AuditInfo (
                         p.createdOn,
                         p.createdBy,
@@ -125,26 +106,25 @@ public class PostRecordTest extends AbstractTest {
                     )
                 from Post p
                 where p.id = :postId
-                """, AuditInfo.class)
-            .setParameter("postId", 1L)
-            .getSingleResult();
+                """,
+                      AuditInfo.class)
+                  .setParameter("postId", 1L)
+                  .getSingleResult();
 
-            assertEquals(
-                LocalDateTime.of(2016, 11, 2, 12, 0, 0), auditInfo.createdOn()
-            );
+          assertEquals(LocalDateTime.of(2016, 11, 2, 12, 0, 0), auditInfo.createdOn());
 
-            assertEquals(
-                "Vlad Mihalcea", auditInfo.createdBy()
-            );
+          assertEquals("Vlad Mihalcea", auditInfo.createdBy());
 
-            assertEquals(
-                "Vlad Mihalcea", auditInfo.updatedBy()
-            );
+          assertEquals("Vlad Mihalcea", auditInfo.updatedBy());
         });
 
-        doInJPA(entityManager -> {
-            List<PostInfo> postInfos = entityManager.createQuery("""
-                select 
+    doInJPA(
+        entityManager -> {
+          List<PostInfo> postInfos =
+              entityManager
+                  .createQuery(
+                      """
+                select
                     p.id,
                     p.title,
                     p.createdOn,
@@ -154,143 +134,123 @@ public class PostRecordTest extends AbstractTest {
                 from Post p
                 order by p.id
                 """)
-            .unwrap(Query.class)
-            .setResultTransformer(
-                (ListResultTransformer) (tuple, aliases) -> {
-                    int i =0;
-                    return new PostInfo(
-                        ((Number) tuple[i++]).longValue(),
-                        (String) tuple[i++],
-                        new AuditInfo(
-                            (LocalDateTime) tuple[i++],
-                            (String) tuple[i++],
-                            (LocalDateTime) tuple[i++],
-                            (String) tuple[i++]
-                        )
-                    );
-                }
-            )
-            .getResultList();
+                  .unwrap(Query.class)
+                  .setResultTransformer(
+                      (ListResultTransformer)
+                          (tuple, aliases) -> {
+                            int i = 0;
+                            return new PostInfo(
+                                ((Number) tuple[i++]).longValue(),
+                                (String) tuple[i++],
+                                new AuditInfo(
+                                    (LocalDateTime) tuple[i++],
+                                    (String) tuple[i++],
+                                    (LocalDateTime) tuple[i++],
+                                    (String) tuple[i++]));
+                          })
+                  .getResultList();
 
-            assertEquals(2, postInfos.size());
+          assertEquals(2, postInfos.size());
 
-            PostInfo postInfo = postInfos.get(0);
+          PostInfo postInfo = postInfos.get(0);
 
-            assertEquals(
-                1L, postInfo.id().longValue()
-            );
+          assertEquals(1L, postInfo.id().longValue());
 
-            assertEquals(
-                "High-Performance Java Persistence", postInfo.title()
-            );
+          assertEquals("High-Performance Java Persistence", postInfo.title());
 
-            assertEquals(
-                LocalDateTime.of(2016, 11, 2, 12, 0, 0), postInfo.auditInfo().createdOn()
-            );
+          assertEquals(LocalDateTime.of(2016, 11, 2, 12, 0, 0), postInfo.auditInfo().createdOn());
 
-            assertEquals(
-                "Vlad Mihalcea", postInfo.auditInfo().createdBy()
-            );
+          assertEquals("Vlad Mihalcea", postInfo.auditInfo().createdBy());
         });
+  }
+
+  @Entity(name = "Post")
+  public class Post {
+
+    @Id private Long id;
+
+    private String title;
+
+    @Column(name = "created_on")
+    private LocalDateTime createdOn;
+
+    @Column(name = "created_by")
+    private String createdBy;
+
+    @Column(name = "updated_on")
+    private LocalDateTime updatedOn;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
+
+    @Version private Short version;
+
+    public Long getId() {
+      return id;
     }
 
-    @Entity(name = "Post")
-    public class Post {
-
-        @Id
-        private Long id;
-
-        private String title;
-
-        @Column(name = "created_on")
-        private LocalDateTime createdOn;
-
-        @Column(name = "created_by")
-        private String createdBy;
-
-        @Column(name = "updated_on")
-        private LocalDateTime updatedOn;
-
-        @Column(name = "updated_by")
-        private String updatedBy;
-
-        @Version
-        private Short version;
-
-        public Long getId() {
-            return id;
-        }
-
-        public Post setId(Long id) {
-            this.id = id;
-            return this;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public Post setTitle(String title) {
-            this.title = title;
-            return this;
-        }
-
-        public LocalDateTime getCreatedOn() {
-            return createdOn;
-        }
-
-        public Post setCreatedOn(LocalDateTime createdOn) {
-            this.createdOn = createdOn;
-            return this;
-        }
-
-        public String getCreatedBy() {
-            return createdBy;
-        }
-
-        public Post setCreatedBy(String createdBy) {
-            this.createdBy = createdBy;
-            return this;
-        }
-
-        public LocalDateTime getUpdatedOn() {
-            return updatedOn;
-        }
-
-        public Post setUpdatedOn(LocalDateTime updatedOn) {
-            this.updatedOn = updatedOn;
-            return this;
-        }
-
-        public String getUpdatedBy() {
-            return updatedBy;
-        }
-
-        public Post setUpdatedBy(String updatedBy) {
-            this.updatedBy = updatedBy;
-            return this;
-        }
-
-        public Short getVersion() {
-            return version;
-        }
-
-        public Post setVersion(Short version) {
-            this.version = version;
-            return this;
-        }
+    public Post setId(Long id) {
+      this.id = id;
+      return this;
     }
 
-    public static record AuditInfo(
-        LocalDateTime createdOn,
-        String createdBy,
-        LocalDateTime updatedOn,
-        String updatedBy
-    ) {}
+    public String getTitle() {
+      return title;
+    }
 
-    public static record PostInfo(
-        Long id,
-        String title,
-        AuditInfo auditInfo
-    ) {}
+    public Post setTitle(String title) {
+      this.title = title;
+      return this;
+    }
+
+    public LocalDateTime getCreatedOn() {
+      return createdOn;
+    }
+
+    public Post setCreatedOn(LocalDateTime createdOn) {
+      this.createdOn = createdOn;
+      return this;
+    }
+
+    public String getCreatedBy() {
+      return createdBy;
+    }
+
+    public Post setCreatedBy(String createdBy) {
+      this.createdBy = createdBy;
+      return this;
+    }
+
+    public LocalDateTime getUpdatedOn() {
+      return updatedOn;
+    }
+
+    public Post setUpdatedOn(LocalDateTime updatedOn) {
+      this.updatedOn = updatedOn;
+      return this;
+    }
+
+    public String getUpdatedBy() {
+      return updatedBy;
+    }
+
+    public Post setUpdatedBy(String updatedBy) {
+      this.updatedBy = updatedBy;
+      return this;
+    }
+
+    public Short getVersion() {
+      return version;
+    }
+
+    public Post setVersion(Short version) {
+      this.version = version;
+      return this;
+    }
+  }
+
+  public static record AuditInfo(
+      LocalDateTime createdOn, String createdBy, LocalDateTime updatedOn, String updatedBy) {}
+
+  public static record PostInfo(Long id, String title, AuditInfo auditInfo) {}
 }

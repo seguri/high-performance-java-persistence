@@ -12,10 +12,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostRepository extends BaseJpaRepository<Post, Long> {
 
-    @Query("""
+  @Query("""
         select p
         from Post p
         where p.slug = :slug
         """)
-    Post findBySlug(@Param("slug") String slug);
+  Post findBySlug(@Param("slug") String slug);
 }

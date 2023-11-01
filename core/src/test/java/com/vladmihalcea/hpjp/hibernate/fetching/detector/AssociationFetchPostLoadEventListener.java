@@ -8,12 +8,11 @@ import org.hibernate.event.spi.PostLoadEventListener;
  */
 public class AssociationFetchPostLoadEventListener implements PostLoadEventListener {
 
-    public static final AssociationFetchPostLoadEventListener INSTANCE = new AssociationFetchPostLoadEventListener();
+  public static final AssociationFetchPostLoadEventListener INSTANCE =
+      new AssociationFetchPostLoadEventListener();
 
-    @Override
-    public void onPostLoad(PostLoadEvent event) {
-        AssociationFetch.Context
-            .get(event.getSession())
-            .postLoad(event);
-    }
+  @Override
+  public void onPostLoad(PostLoadEvent event) {
+    AssociationFetch.Context.get(event.getSession()).postLoad(event);
+  }
 }

@@ -1,165 +1,162 @@
 package com.vladmihalcea.hpjp.hibernate.mapping;
 
-import com.vladmihalcea.hpjp.util.AbstractPostgreSQLIntegrationTest;
-import org.hibernate.annotations.JoinFormula;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
+import com.vladmihalcea.hpjp.util.AbstractPostgreSQLIntegrationTest;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.Objects;
-
-import static org.junit.Assert.assertEquals;
+import org.hibernate.annotations.JoinFormula;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
 public class JoinFormulaCollationTest extends AbstractPostgreSQLIntegrationTest {
 
-	@Override
-	protected Class<?>[] entities() {
-		return new Class<?>[] {
-			Country.class,
-			User.class
-		};
-	}
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Country.class, User.class};
+  }
 
-	@Test
-	public void testLifecycle() {
-		Country US = new Country();
-		US.setCode( "US" );
-		US.setName( "United States" );
+  @Test
+  public void testLifecycle() {
+    Country US = new Country();
+    US.setCode("US");
+    US.setName("United States");
 
-		Country Romania = new Country();
-		Romania.setCode( "RO" );
-		Romania.setName( "Romania" );
+    Country Romania = new Country();
+    Romania.setCode("RO");
+    Romania.setName("Romania");
 
-		doInJPA( entityManager -> {
-			entityManager.persist( US );
-			entityManager.persist( Romania );
-		} );
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(US);
+          entityManager.persist(Romania);
+        });
 
-		doInJPA( entityManager -> {
-			User user1 = new User( );
-			user1.setId( 1L );
-			user1.setFirstName( "John" );
-			user1.setLastName( "Doe" );
-			user1.setCountryCode( "us" );
-			entityManager.persist( user1 );
+    doInJPA(
+        entityManager -> {
+          User user1 = new User();
+          user1.setId(1L);
+          user1.setFirstName("John");
+          user1.setLastName("Doe");
+          user1.setCountryCode("us");
+          entityManager.persist(user1);
 
-			User user2 = new User( );
-			user2.setId( 2L );
-			user2.setFirstName( "Vlad" );
-			user2.setLastName( "Mihalcea" );
-			user2.setCountryCode( "Ro" );
-			entityManager.persist( user2 );
-		} );
+          User user2 = new User();
+          user2.setId(2L);
+          user2.setFirstName("Vlad");
+          user2.setLastName("Mihalcea");
+          user2.setCountryCode("Ro");
+          entityManager.persist(user2);
+        });
 
-		doInJPA( entityManager -> {
-			User john = entityManager.find( User.class, 1L );
-			assertEquals( US, john.getCountry());
+    doInJPA(
+        entityManager -> {
+          User john = entityManager.find(User.class, 1L);
+          assertEquals(US, john.getCountry());
 
-			User vlad = entityManager.find( User.class, 2L );
-			assertEquals( Romania, vlad.getCountry());
-		} );
-	}
+          User vlad = entityManager.find(User.class, 2L);
+          assertEquals(Romania, vlad.getCountry());
+        });
+  }
 
-	@Entity(name = "User")
-	@Table(name = "users")
-	public static class User {
+  @Entity(name = "User")
+  @Table(name = "users")
+  public static class User {
 
-		@Id
-		private Long id;
+    @Id private Long id;
 
-		private String firstName;
+    private String firstName;
 
-		private String lastName;
+    private String lastName;
 
-		private String countryCode;
+    private String countryCode;
 
-		@ManyToOne
-		@JoinFormula( "(select c.code from Country c where UPPER(c.code) = UPPER(countryCode))" )
-		private Country country;
+    @ManyToOne
+    @JoinFormula("(select c.code from Country c where UPPER(c.code) = UPPER(countryCode))")
+    private Country country;
 
-		//Getters and setters omitted for brevity
+    // Getters and setters omitted for brevity
 
-		public Long getId() {
-			return id;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public void setId(Long id) {
-			this.id = id;
-		}
+    public void setId(Long id) {
+      this.id = id;
+    }
 
-		public String getFirstName() {
-			return firstName;
-		}
+    public String getFirstName() {
+      return firstName;
+    }
 
-		public void setFirstName(String firstName) {
-			this.firstName = firstName;
-		}
+    public void setFirstName(String firstName) {
+      this.firstName = firstName;
+    }
 
-		public String getLastName() {
-			return lastName;
-		}
+    public String getLastName() {
+      return lastName;
+    }
 
-		public void setLastName(String lastName) {
-			this.lastName = lastName;
-		}
+    public void setLastName(String lastName) {
+      this.lastName = lastName;
+    }
 
-		public String getCountryCode() {
-			return countryCode;
-		}
+    public String getCountryCode() {
+      return countryCode;
+    }
 
-		public void setCountryCode(String countryCode) {
-			this.countryCode = countryCode;
-		}
+    public void setCountryCode(String countryCode) {
+      this.countryCode = countryCode;
+    }
 
-		public Country getCountry() {
-			return country;
-		}
-	}
+    public Country getCountry() {
+      return country;
+    }
+  }
 
-	@Entity(name = "Country")
-	public static class Country {
+  @Entity(name = "Country")
+  public static class Country {
 
-		@Id
-		private String code;
+    @Id private String code;
 
-		private String name;
+    private String name;
 
-		public String getCode() {
-			return code;
-		}
+    public String getCode() {
+      return code;
+    }
 
-		public void setCode(String code) {
-			this.code = code;
-		}
+    public void setCode(String code) {
+      this.code = code;
+    }
 
-		public String getName() {
-			return name;
-		}
+    public String getName() {
+      return name;
+    }
 
-		public void setName(String name) {
-			this.name = name;
-		}
+    public void setName(String name) {
+      this.name = name;
+    }
 
-		@Override
-		public boolean equals(Object o) {
-			if ( this == o ) {
-				return true;
-			}
-			if ( !( o instanceof Country ) ) {
-				return false;
-			}
-			Country country = (Country) o;
-			return Objects.equals( getCode(), country.getCode() );
-		}
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof Country)) {
+        return false;
+      }
+      Country country = (Country) o;
+      return Objects.equals(getCode(), country.getCode());
+    }
 
-		@Override
-		public int hashCode() {
-			return Objects.hash( getCode() );
-		}
-	}
+    @Override
+    public int hashCode() {
+      return Objects.hash(getCode());
+    }
+  }
 }

@@ -15,20 +15,19 @@ import org.hibernate.annotations.SQLInsert;
 @SQLInsert(sql = "insert into post (id, title) values (default, ?)")
 public class BatchInsertPost extends AbstractPost<Post> {
 
-    @Id
-    @Column(insertable = false)
-    @GeneratedValue(generator = "mysql_identity_generator")
-    @GenericGenerator(
-        name = "mysql_identity_generator",
-        strategy = "com.vladmihalcea.hpjp.hibernate.batch.identity.stateless.NoIdentityGenerator"
-    )
-    private Long id;
+  @Id
+  @Column(insertable = false)
+  @GeneratedValue(generator = "mysql_identity_generator")
+  @GenericGenerator(
+      name = "mysql_identity_generator",
+      strategy = "com.vladmihalcea.hpjp.hibernate.batch.identity.stateless.NoIdentityGenerator")
+  private Long id;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+  public void setId(Long id) {
+    this.id = id;
+  }
 }

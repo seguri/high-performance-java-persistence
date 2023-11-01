@@ -4,7 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import java.time.LocalDateTime;
 
 /**
@@ -14,38 +13,37 @@ import java.time.LocalDateTime;
 @Table(name = "post")
 public class Post {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    private String title;
+  private String title;
 
-    @Column(name = "created_on", nullable = false)
-    private LocalDateTime createdOn;
+  @Column(name = "created_on", nullable = false)
+  private LocalDateTime createdOn;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public Post setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public Post setId(Long id) {
+    this.id = id;
+    return this;
+  }
 
-    public String getTitle() {
-        return title;
-    }
+  public String getTitle() {
+    return title;
+  }
 
-    public Post setTitle(String title) {
-        this.title = title;
-        return this;
-    }
+  public Post setTitle(String title) {
+    this.title = title;
+    return this;
+  }
 
-    public LocalDateTime getCreatedOn() {
-        return createdOn;
-    }
+  public LocalDateTime getCreatedOn() {
+    return createdOn;
+  }
 
-    public Post setCreatedOn(LocalDateTime createdOn) {
-        this.createdOn = createdOn;
-        return this;
-    }
+  public Post setCreatedOn(LocalDateTime createdOn) {
+    this.createdOn = createdOn;
+    return this;
+  }
 }

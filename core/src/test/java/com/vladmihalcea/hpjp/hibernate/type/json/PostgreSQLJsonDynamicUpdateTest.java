@@ -14,22 +14,22 @@ import org.junit.Test;
  */
 public class PostgreSQLJsonDynamicUpdateTest extends AbstractPostgreSQLIntegrationTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[]{
-            Book.class
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Book.class};
+  }
 
-    @Override
-    protected void afterInit() {
-        doInJPA(entityManager -> {
-            entityManager.persist(
-                new Book()
-                    .setIsbn("978-9730228236")
-                    .setTitle("High-Performance Java Persistence")
-                    .setAuthor("Vlad Mihalcea")
-                    .setProperties("""
+  @Override
+  protected void afterInit() {
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(
+              new Book()
+                  .setIsbn("978-9730228236")
+                  .setTitle("High-Performance Java Persistence")
+                  .setAuthor("Vlad Mihalcea")
+                  .setProperties(
+                      """
                         {
                            "publisher": "Amazon",
                            "price": 44.99,
@@ -54,85 +54,82 @@ public class PostgreSQLJsonDynamicUpdateTest extends AbstractPostgreSQLIntegrati
                                }
                            ]
                         }
-                        """)
-            );
+                        """));
         });
-    }
+  }
 
-    @Test
-    public void testFetchAndUpdateOtherAttribute() {
-        doInJPA(entityManager -> {
-            entityManager
-                .unwrap(Session.class)
-                .bySimpleNaturalId(Book.class)
-                .load("978-9730228236")
-                .setTitle("High-Performance Java Persistence, 2nd edition");
+  @Test
+  public void testFetchAndUpdateOtherAttribute() {
+    doInJPA(
+        entityManager -> {
+          entityManager
+              .unwrap(Session.class)
+              .bySimpleNaturalId(Book.class)
+              .load("978-9730228236")
+              .setTitle("High-Performance Java Persistence, 2nd edition");
         });
+  }
+
+  @Entity(name = "Book")
+  @Table(name = "book")
+  @DynamicUpdate
+  public static class Book {
+
+    @Id @GeneratedValue private Long id;
+
+    @NaturalId private String isbn;
+
+    private String title;
+
+    private String author;
+
+    @Column(columnDefinition = "jsonb")
+    @Type(JsonType.class)
+    private String properties;
+
+    public Long getId() {
+      return id;
     }
 
-    @Entity(name = "Book")
-    @Table(name = "book")
-    @DynamicUpdate
-    public static class Book {
-
-        @Id
-        @GeneratedValue
-        private Long id;
-
-        @NaturalId
-        private String isbn;
-
-        private String title;
-
-        private String author;
-
-        @Column(columnDefinition = "jsonb")
-        @Type(JsonType.class)
-        private String properties;
-
-        public Long getId() {
-            return id;
-        }
-
-        public Book setId(Long id) {
-            this.id = id;
-            return this;
-        }
-
-        public String getIsbn() {
-            return isbn;
-        }
-
-        public Book setIsbn(String isbn) {
-            this.isbn = isbn;
-            return this;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public Book setTitle(String title) {
-            this.title = title;
-            return this;
-        }
-
-        public String getAuthor() {
-            return author;
-        }
-
-        public Book setAuthor(String author) {
-            this.author = author;
-            return this;
-        }
-
-        public String getProperties() {
-            return properties;
-        }
-
-        public Book setProperties(String properties) {
-            this.properties = properties;
-            return this;
-        }
+    public Book setId(Long id) {
+      this.id = id;
+      return this;
     }
+
+    public String getIsbn() {
+      return isbn;
+    }
+
+    public Book setIsbn(String isbn) {
+      this.isbn = isbn;
+      return this;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public Book setTitle(String title) {
+      this.title = title;
+      return this;
+    }
+
+    public String getAuthor() {
+      return author;
+    }
+
+    public Book setAuthor(String author) {
+      this.author = author;
+      return this;
+    }
+
+    public String getProperties() {
+      return properties;
+    }
+
+    public Book setProperties(String properties) {
+      this.properties = properties;
+      return this;
+    }
+  }
 }

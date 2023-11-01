@@ -9,11 +9,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public class TransactionRoutingDataSource extends AbstractRoutingDataSource {
 
-    @Nullable
-    @Override
-    protected Object determineCurrentLookupKey() {
-        return TransactionSynchronizationManager.isCurrentTransactionReadOnly() ?
-            DataSourceType.READ_ONLY :
-            DataSourceType.READ_WRITE;
-    }
+  @Nullable
+  @Override
+  protected Object determineCurrentLookupKey() {
+    return TransactionSynchronizationManager.isCurrentTransactionReadOnly()
+        ? DataSourceType.READ_ONLY
+        : DataSourceType.READ_WRITE;
+  }
 }

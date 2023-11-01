@@ -12,22 +12,23 @@ import org.hibernate.persister.entity.EntityPersister;
  */
 public class AuditLogPostLoadEventListener implements PostLoadEventListener {
 
-    public static final AuditLogPostLoadEventListener INSTANCE = new AuditLogPostLoadEventListener();
+  public static final AuditLogPostLoadEventListener INSTANCE = new AuditLogPostLoadEventListener();
 
-    @Override
-    public void onPostLoad(PostLoadEvent event) {
-        final Object entity = event.getEntity();
-        final EntityPersister entityPersister = event.getPersister();
+  @Override
+  public void onPostLoad(PostLoadEvent event) {
+    final Object entity = event.getEntity();
+    final EntityPersister entityPersister = event.getPersister();
 
-        if (entity instanceof Auditable) {
-            Auditable auditable = (Auditable) entity;
+    if (entity instanceof Auditable) {
+      Auditable auditable = (Auditable) entity;
 
-            event.getSession().persist(
-                new LoadEventLogEntry()
-                    .setCreatedBy(LoggedUser.get())
-                    .setEntityName(entityPersister.getEntityName())
-                    .setEntityId(String.valueOf(auditable.getId()))
-            );
-        }
+      event
+          .getSession()
+          .persist(
+              new LoadEventLogEntry()
+                  .setCreatedBy(LoggedUser.get())
+                  .setEntityName(entityPersister.getEntityName())
+                  .setEntityId(String.valueOf(auditable.getId())));
     }
+  }
 }

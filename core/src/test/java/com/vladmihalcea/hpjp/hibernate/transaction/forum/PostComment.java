@@ -9,43 +9,39 @@ import jakarta.persistence.*;
 @Table(name = "post_comment")
 public class PostComment {
 
-    @Id
-    @GeneratedValue
-    private Long id;
+  @Id @GeneratedValue private Long id;
 
-    @ManyToOne
-    private Post post;
+  @ManyToOne private Post post;
 
-    private String review;
+  private String review;
 
-    public PostComment() {
-    }
+  public PostComment() {}
 
-    public PostComment(String review) {
-        this.review = review;
-    }
+  public PostComment(String review) {
+    this.review = review;
+  }
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+  public void setId(Long id) {
+    this.id = id;
+  }
 
-    public Post getPost() {
-        return post;
-    }
+  public Post getPost() {
+    return post;
+  }
 
-    public void setPost(Post post) {
-        this.post = post;
-    }
+  public void setPost(Post post) {
+    this.post = post;
+  }
 
-    public String getReview() {
-        return review;
-    }
+  public String getReview() {
+    return review;
+  }
 
-    public void setReview(String review) {
-        this.review = review;
-    }
+  public void setReview(String review) {
+    this.review = review;
+  }
 }

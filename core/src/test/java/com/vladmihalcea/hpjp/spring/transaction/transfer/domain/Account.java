@@ -12,40 +12,38 @@ import jakarta.persistence.Version;
 @Table(name = "account")
 public class Account {
 
-    @Id
-    private String id;
+  @Id private String id;
 
-    private String owner;
+  private String owner;
 
-    private long balance;
+  private long balance;
 
-    @Version
-    private short version;
+  @Version private short version;
 
-    public String getId() {
-        return id;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public Account setId(String iban) {
-        this.id = iban;
-        return this;
-    }
+  public Account setId(String iban) {
+    this.id = iban;
+    return this;
+  }
 
-    public String getOwner() {
-        return owner;
-    }
+  public String getOwner() {
+    return owner;
+  }
 
-    public Account setOwner(String owner) {
-        this.owner = owner;
-        return this;
-    }
+  public Account setOwner(String owner) {
+    this.owner = owner;
+    return this;
+  }
 
-    public long getBalance() {
-        return balance;
-    }
+  public long getBalance() {
+    return balance;
+  }
 
-    public Account setBalance(long balance) {
-        this.balance = balance;
-        return this;
-    }
+  public Account setBalance(long balance) {
+    this.balance = balance;
+    return this;
+  }
 }

@@ -1,11 +1,17 @@
 package com.vladmihalcea.hpjp.spring.transaction.transfer;
 
+import static org.junit.Assert.assertEquals;
+
 import com.vladmihalcea.hpjp.spring.transaction.transfer.config.ACIDRaceConditionTransferConfiguration;
 import com.vladmihalcea.hpjp.spring.transaction.transfer.domain.Account;
 import com.vladmihalcea.hpjp.spring.transaction.transfer.repository.AccountRepository;
 import com.vladmihalcea.hpjp.spring.transaction.transfer.service.TransferService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,13 +25,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.List;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static org.junit.Assert.assertEquals;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -34,125 +33,115 @@ import static org.junit.Assert.assertEquals;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class ACIDRaceConditionTransferTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private TransferService transferService;
+  @Autowired private TransferService transferService;
 
-    @Autowired
-    private AccountRepository accountRepository;
+  @Autowired private AccountRepository accountRepository;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Before
-    public void init() {
-        try {
-            transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
+  @Before
+  public void init() {
+    try {
+      transactionTemplate.execute(
+          (TransactionCallback<Void>)
+              transactionStatus -> {
                 entityManager.persist(
-                    new Account()
-                        .setId("Alice-123")
-                        .setOwner("Alice")
-                        .setBalance(10)
-                );
+                    new Account().setId("Alice-123").setOwner("Alice").setBalance(10));
 
-                entityManager.persist(
-                    new Account()
-                        .setId("Bob-456")
-                        .setOwner("Bob")
-                        .setBalance(0)
-                );
-                
+                entityManager.persist(new Account().setId("Bob-456").setOwner("Bob").setBalance(0));
+
                 return null;
-            });
-        } catch (TransactionException e) {
-            LOGGER.error("Failure", e);
-        }
-
+              });
+    } catch (TransactionException e) {
+      LOGGER.error("Failure", e);
     }
+  }
 
-    @Test
-    public void testSerialExecution() {
-        assertEquals(10L, accountRepository.getBalance("Alice-123"));
-        assertEquals(0L, accountRepository.getBalance("Bob-456"));
+  @Test
+  public void testSerialExecution() {
+    assertEquals(10L, accountRepository.getBalance("Alice-123"));
+    assertEquals(0L, accountRepository.getBalance("Bob-456"));
 
-        transferService.transfer("Alice-123", "Bob-456", 5L);
+    transferService.transfer("Alice-123", "Bob-456", 5L);
 
-        assertEquals(5L, accountRepository.getBalance("Alice-123"));
-        assertEquals(5L, accountRepository.getBalance("Bob-456"));
+    assertEquals(5L, accountRepository.getBalance("Alice-123"));
+    assertEquals(5L, accountRepository.getBalance("Bob-456"));
 
-        transferService.transfer("Alice-123", "Bob-456", 5L);
+    transferService.transfer("Alice-123", "Bob-456", 5L);
 
-        assertEquals(0L, accountRepository.getBalance("Alice-123"));
-        assertEquals(10L, accountRepository.getBalance("Bob-456"));
+    assertEquals(0L, accountRepository.getBalance("Alice-123"));
+    assertEquals(10L, accountRepository.getBalance("Bob-456"));
 
-        transferService.transfer("Alice-123", "Bob-456", 5L);
+    transferService.transfer("Alice-123", "Bob-456", 5L);
 
-        assertEquals(0L, accountRepository.getBalance("Alice-123"));
-        assertEquals(10L, accountRepository.getBalance("Bob-456"));
-    }
+    assertEquals(0L, accountRepository.getBalance("Alice-123"));
+    assertEquals(10L, accountRepository.getBalance("Bob-456"));
+  }
 
-    //Maximum connection count is limited to 64 due to Hikari maximum pool size
-    private int threadCount = 16;
+  // Maximum connection count is limited to 64 due to Hikari maximum pool size
+  private int threadCount = 16;
 
-    @Test
-    public void testParallelExecution() throws InterruptedException {
-        assertEquals(10L, accountRepository.getBalance("Alice-123"));
-        assertEquals(0L, accountRepository.getBalance("Bob-456"));
+  @Test
+  public void testParallelExecution() throws InterruptedException {
+    assertEquals(10L, accountRepository.getBalance("Alice-123"));
+    assertEquals(0L, accountRepository.getBalance("Bob-456"));
 
-        CountDownLatch startLatch = new CountDownLatch(1);
-        CountDownLatch endLatch = new CountDownLatch(threadCount);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch endLatch = new CountDownLatch(threadCount);
 
-        for (int i = 0; i < threadCount; i++) {
-            new Thread(() -> {
+    for (int i = 0; i < threadCount; i++) {
+      new Thread(
+              () -> {
                 try {
-                    startLatch.await();
+                  startLatch.await();
 
-                    transferService.transfer("Alice-123", "Bob-456", 5L);
+                  transferService.transfer("Alice-123", "Bob-456", 5L);
                 } catch (Exception e) {
-                    LOGGER.error("Transfer failed", e);
+                  LOGGER.error("Transfer failed", e);
                 } finally {
-                    endLatch.countDown();
+                  endLatch.countDown();
                 }
-            }).start();
-        }
-        LOGGER.info("Starting threads");
-        startLatch.countDown();
-        endLatch.await();
-
-        LOGGER.info("Alice's balance: {}", accountRepository.getBalance("Alice-123"));
-        LOGGER.info("Bob's balance: {}", accountRepository.getBalance("Bob-456"));
+              })
+          .start();
     }
+    LOGGER.info("Starting threads");
+    startLatch.countDown();
+    endLatch.await();
 
-    @Test
-    public void testParallelExecutionUsingExecutorService() throws InterruptedException {
+    LOGGER.info("Alice's balance: {}", accountRepository.getBalance("Alice-123"));
+    LOGGER.info("Bob's balance: {}", accountRepository.getBalance("Bob-456"));
+  }
 
-        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+  @Test
+  public void testParallelExecutionUsingExecutorService() throws InterruptedException {
 
-        assertEquals(10L, accountRepository.getBalance("Alice-123"));
-        assertEquals(0L, accountRepository.getBalance("Bob-456"));
+    ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
 
-        LOGGER.info("Starting threads");
-        List<Future<Boolean>> futures = executorService.invokeAll(
-            IntStream
-                .range(0, threadCount)
+    assertEquals(10L, accountRepository.getBalance("Alice-123"));
+    assertEquals(0L, accountRepository.getBalance("Bob-456"));
+
+    LOGGER.info("Starting threads");
+    List<Future<Boolean>> futures =
+        executorService.invokeAll(
+            IntStream.range(0, threadCount)
                 .mapToObj(
-                    i -> (Callable<Boolean>) () ->
-                        transferService.transfer("Alice-123", "Bob-456", 5L))
-                .collect(Collectors.toList())
-        );
-        for (Future<Boolean> future : futures) {
-            try {
-                future.get();
-            } catch (InterruptedException| ExecutionException e) {
-                LOGGER.error(e.getMessage());
-            }
-        }
-
-        LOGGER.info("Alice's balance {}", accountRepository.getBalance("Alice-123"));
-        LOGGER.info("Bob's balance {}", accountRepository.getBalance("Bob-456"));
+                    i ->
+                        (Callable<Boolean>)
+                            () -> transferService.transfer("Alice-123", "Bob-456", 5L))
+                .collect(Collectors.toList()));
+    for (Future<Boolean> future : futures) {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        LOGGER.error(e.getMessage());
+      }
     }
+
+    LOGGER.info("Alice's balance {}", accountRepository.getBalance("Alice-123"));
+    LOGGER.info("Bob's balance {}", accountRepository.getBalance("Bob-456"));
+  }
 }

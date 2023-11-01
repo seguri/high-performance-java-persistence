@@ -3,12 +3,11 @@ package com.vladmihalcea.hpjp.util.spring.config.flyway;
 import com.vladmihalcea.hpjp.util.providers.Database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.util.Properties;
+import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
-
-import javax.sql.DataSource;
-import java.util.Properties;
 
 /**
  * @author Vlad Mihalcea
@@ -17,43 +16,43 @@ import java.util.Properties;
 @PropertySource({"/META-INF/jdbc-postgresql.properties"})
 public class AbstractPostgreSQLFlywayConfiguration extends AbstractFlywayConfiguration {
 
-    @Value("${jdbc.dataSourceClassName}")
-    private String dataSourceClassName;
+  @Value("${jdbc.dataSourceClassName}")
+  private String dataSourceClassName;
 
-    @Value("${jdbc.username}")
-    private String jdbcUser;
+  @Value("${jdbc.username}")
+  private String jdbcUser;
 
-    @Value("${jdbc.password}")
-    private String jdbcPassword;
+  @Value("${jdbc.password}")
+  private String jdbcPassword;
 
-    @Value("${jdbc.database}")
-    private String jdbcDatabase;
+  @Value("${jdbc.database}")
+  private String jdbcDatabase;
 
-    @Value("${jdbc.host}")
-    private String jdbcHost;
+  @Value("${jdbc.host}")
+  private String jdbcHost;
 
-    @Value("${jdbc.port}")
-    private String jdbcPort;
+  @Value("${jdbc.port}")
+  private String jdbcPort;
 
-    public AbstractPostgreSQLFlywayConfiguration() {
-        super(Database.POSTGRESQL);
-    }
+  public AbstractPostgreSQLFlywayConfiguration() {
+    super(Database.POSTGRESQL);
+  }
 
-    @Override
-    public DataSource dataSource() {
-        Properties driverProperties = new Properties();
-        driverProperties.setProperty("user", jdbcUser);
-        driverProperties.setProperty("password", jdbcPassword);
-        driverProperties.setProperty("databaseName", jdbcDatabase);
-        driverProperties.setProperty("serverName", jdbcHost);
-        driverProperties.setProperty("portNumber", jdbcPort);
+  @Override
+  public DataSource dataSource() {
+    Properties driverProperties = new Properties();
+    driverProperties.setProperty("user", jdbcUser);
+    driverProperties.setProperty("password", jdbcPassword);
+    driverProperties.setProperty("databaseName", jdbcDatabase);
+    driverProperties.setProperty("serverName", jdbcHost);
+    driverProperties.setProperty("portNumber", jdbcPort);
 
-        Properties properties = new Properties();
-        properties.put("dataSourceClassName", dataSourceClassName);
-        properties.put("dataSourceProperties", driverProperties);
-        //properties.setProperty("minimumPoolSize", String.valueOf(1));
-        properties.setProperty("maximumPoolSize", String.valueOf(3));
-        properties.setProperty("connectionTimeout", String.valueOf(5000));
-        return new HikariDataSource(new HikariConfig(properties));
-    }
+    Properties properties = new Properties();
+    properties.put("dataSourceClassName", dataSourceClassName);
+    properties.put("dataSourceProperties", driverProperties);
+    // properties.setProperty("minimumPoolSize", String.valueOf(1));
+    properties.setProperty("maximumPoolSize", String.valueOf(3));
+    properties.setProperty("connectionTimeout", String.valueOf(5000));
+    return new HikariDataSource(new HikariConfig(properties));
+  }
 }

@@ -1,7 +1,6 @@
 package com.vladmihalcea.hpjp.spring.data.query.method.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -14,77 +13,76 @@ import java.util.Map;
  */
 public class PostCommentDTO {
 
-    public static final String ID = "id";
-    public static final String POST_ID = "postId";
-    public static final String PARENT_ID = "parentId";
-    public static final String REVIEW = "review";
-    public static final String CREATED_ON = "createdOn";
-    public static final String VOTES = "votes";
+  public static final String ID = "id";
+  public static final String POST_ID = "postId";
+  public static final String PARENT_ID = "parentId";
+  public static final String REVIEW = "review";
+  public static final String CREATED_ON = "createdOn";
+  public static final String VOTES = "votes";
 
-    private Long id;
+  private Long id;
 
-    private Long postId;
+  private Long postId;
 
-    private Long parentId;
+  private Long parentId;
 
-    private String review;
+  private String review;
 
-    private Date createdOn;
+  private Date createdOn;
 
-    private int votes;
+  private int votes;
 
-    @JsonIgnore
-    private PostCommentDTO parent;
+  @JsonIgnore private PostCommentDTO parent;
 
-    private List<PostCommentDTO> replies = new ArrayList<>();
+  private List<PostCommentDTO> replies = new ArrayList<>();
 
-    public PostCommentDTO(Object[] tuples, Map<String, Integer> aliasToIndexMap) {
-        this.id = (Long) tuples[aliasToIndexMap.get(ID)];
-        this.postId = (Long) tuples[aliasToIndexMap.get(POST_ID)];
-        this.parentId = (Long) tuples[aliasToIndexMap.get(PARENT_ID)];
-        this.review = (String) tuples[aliasToIndexMap.get(REVIEW)];
-        this.createdOn = Timestamp.valueOf((LocalDateTime) tuples[aliasToIndexMap.get(CREATED_ON)]);
-        this.votes = (int) tuples[aliasToIndexMap.get(VOTES)];
-    }
+  public PostCommentDTO(Object[] tuples, Map<String, Integer> aliasToIndexMap) {
+    this.id = (Long) tuples[aliasToIndexMap.get(ID)];
+    this.postId = (Long) tuples[aliasToIndexMap.get(POST_ID)];
+    this.parentId = (Long) tuples[aliasToIndexMap.get(PARENT_ID)];
+    this.review = (String) tuples[aliasToIndexMap.get(REVIEW)];
+    this.createdOn = Timestamp.valueOf((LocalDateTime) tuples[aliasToIndexMap.get(CREATED_ON)]);
+    this.votes = (int) tuples[aliasToIndexMap.get(VOTES)];
+  }
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public Long getPostId() {
-        return postId;
-    }
+  public Long getPostId() {
+    return postId;
+  }
 
-    public Long getParentId() {
-        return parentId;
-    }
+  public Long getParentId() {
+    return parentId;
+  }
 
-    public String getReview() {
-        return review;
-    }
+  public String getReview() {
+    return review;
+  }
 
-    public Date getCreatedOn() {
-        return createdOn;
-    }
+  public Date getCreatedOn() {
+    return createdOn;
+  }
 
-    public int getVotes() {
-        return votes;
-    }
+  public int getVotes() {
+    return votes;
+  }
 
-    public List<PostCommentDTO> getReplies() {
-        return replies;
-    }
+  public List<PostCommentDTO> getReplies() {
+    return replies;
+  }
 
-    public void addReply(PostCommentDTO reply) {
-        replies.add(reply);
-        reply.parent = this;
-    }
+  public void addReply(PostCommentDTO reply) {
+    replies.add(reply);
+    reply.parent = this;
+  }
 
-    public PostCommentDTO getParent() {
-        return parent;
-    }
+  public PostCommentDTO getParent() {
+    return parent;
+  }
 
-    public PostCommentDTO root() {
-        return (parent != null) ? parent.root() : this;
-    }
+  public PostCommentDTO root() {
+    return (parent != null) ? parent.root() : this;
+  }
 }

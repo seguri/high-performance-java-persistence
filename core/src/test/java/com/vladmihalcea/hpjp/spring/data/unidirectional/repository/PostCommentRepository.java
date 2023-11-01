@@ -13,10 +13,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostCommentRepository extends BaseJpaRepository<PostComment, Long> {
 
-    @Query("""
+  @Query("""
         delete from PostComment
         where post.id = :postId
         """)
-    @Modifying
-    void deleteAllByPostId(@Param("postId") Long postId);
+  @Modifying
+  void deleteAllByPostId(@Param("postId") Long postId);
 }

@@ -22,43 +22,39 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringDataJPAAssignedTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private BookRepository bookRepository;
+  @Autowired private BookRepository bookRepository;
 
-    @Autowired
-    private BookBaseJpaRepository bookBaseJpaRepository;
+  @Autowired private BookBaseJpaRepository bookBaseJpaRepository;
 
-    @Test
-    public void testJpaRepositorySave() {
-        transactionTemplate.execute(status -> {
-            bookRepository.save(
-                new Book()
-                    .setIsbn(9789730228236L)
-                    .setTitle("High-Performance Java Persistence")
-                    .setAuthor("Vlad Mihalcea")
-            );
+  @Test
+  public void testJpaRepositorySave() {
+    transactionTemplate.execute(
+        status -> {
+          bookRepository.save(
+              new Book()
+                  .setIsbn(9789730228236L)
+                  .setTitle("High-Performance Java Persistence")
+                  .setAuthor("Vlad Mihalcea"));
 
-            return null;
+          return null;
         });
-    }
+  }
 
-    @Test
-    public void testBaseJpaRepositoryPersist() {
-        transactionTemplate.execute(status -> {
-            bookBaseJpaRepository.persist(
-                new Book()
-                    .setIsbn(9789730228236L)
-                    .setTitle("High-Performance Java Persistence")
-                    .setAuthor("Vlad Mihalcea")
-            );
+  @Test
+  public void testBaseJpaRepositoryPersist() {
+    transactionTemplate.execute(
+        status -> {
+          bookBaseJpaRepository.persist(
+              new Book()
+                  .setIsbn(9789730228236L)
+                  .setTitle("High-Performance Java Persistence")
+                  .setAuthor("Vlad Mihalcea"));
 
-            return null;
+          return null;
         });
-    }
+  }
 }
-

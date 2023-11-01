@@ -12,29 +12,27 @@ import jakarta.persistence.Version;
 @Table(name = "contract")
 public class Contract {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    private String title;
+  private String title;
 
-    @Version
-    private Short version;
+  @Version private Short version;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public Contract setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public Contract setId(Long id) {
+    this.id = id;
+    return this;
+  }
 
-    public String getTitle() {
-        return title;
-    }
+  public String getTitle() {
+    return title;
+  }
 
-    public Contract setTitle(String title) {
-        this.title = title;
-        return this;
-    }
+  public Contract setTitle(String title) {
+    this.title = title;
+    return this;
+  }
 }

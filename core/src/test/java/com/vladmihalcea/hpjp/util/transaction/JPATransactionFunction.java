@@ -1,18 +1,14 @@
 package com.vladmihalcea.hpjp.util.transaction;
 
-import java.util.function.Function;
 import jakarta.persistence.EntityManager;
+import java.util.function.Function;
 
 /**
  * @author Vlad Mihalcea
  */
 @FunctionalInterface
 public interface JPATransactionFunction<T> extends Function<EntityManager, T> {
-	default void beforeTransactionCompletion() {
+  default void beforeTransactionCompletion() {}
 
-	}
-
-	default void afterTransactionCompletion() {
-
-	}
+  default void afterTransactionCompletion() {}
 }

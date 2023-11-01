@@ -1,6 +1,9 @@
 package com.vladmihalcea.hpjp.util.spring.config.flyway;
 
 import com.vladmihalcea.hpjp.util.providers.Database;
+import jakarta.persistence.EntityManagerFactory;
+import java.util.Properties;
+import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.hibernate.jpa.HibernatePersistenceProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,10 +18,6 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManagerFactory;
-import javax.sql.DataSource;
-import java.util.Properties;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -26,83 +25,83 @@ import java.util.Properties;
 @EnableAspectJAutoProxy
 public abstract class AbstractFlywayConfiguration {
 
-    private final Database databaseType;
+  private final Database databaseType;
 
-    @Value("${hibernate.dialect}")
-    private String hibernateDialect;
+  @Value("${hibernate.dialect}")
+  private String hibernateDialect;
 
-    protected AbstractFlywayConfiguration(Database databaseType) {
-        this.databaseType = databaseType;
-    }
+  protected AbstractFlywayConfiguration(Database databaseType) {
+    this.databaseType = databaseType;
+  }
 
-    @Bean
-    public static PropertySourcesPlaceholderConfigurer properties() {
-        return new PropertySourcesPlaceholderConfigurer();
-    }
+  @Bean
+  public static PropertySourcesPlaceholderConfigurer properties() {
+    return new PropertySourcesPlaceholderConfigurer();
+  }
 
-    @Bean
-    public abstract DataSource dataSource();
+  @Bean
+  public abstract DataSource dataSource();
 
-    @Bean
-    public Database database() {
-        return databaseType;
-    }
+  @Bean
+  public Database database() {
+    return databaseType;
+  }
 
-    @Bean
-    public Flyway flyway() {
-        Flyway flyway = Flyway.configure()
+  @Bean
+  public Flyway flyway() {
+    Flyway flyway =
+        Flyway.configure()
             .dataSource(dataSource())
             .baselineOnMigrate(true)
             .locations(
                 String.format(
-                    "classpath:/flyway/scripts/%1$s/migration",
-                    databaseType.name().toLowerCase()
-                )
-        ).load();
-        flyway.migrate();
-        return flyway;
-    }
+                    "classpath:/flyway/scripts/%1$s/migration", databaseType.name().toLowerCase()))
+            .load();
+    flyway.migrate();
+    return flyway;
+  }
 
-    @Bean @DependsOn("flyway")
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-        LocalContainerEntityManagerFactoryBean localContainerEntityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
-        localContainerEntityManagerFactoryBean.setPersistenceUnitName(getClass().getSimpleName());
-        localContainerEntityManagerFactoryBean.setPersistenceProvider(new HibernatePersistenceProvider());
-        localContainerEntityManagerFactoryBean.setDataSource(dataSource());
-        localContainerEntityManagerFactoryBean.setPackagesToScan(packagesToScan());
+  @Bean
+  @DependsOn("flyway")
+  public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    LocalContainerEntityManagerFactoryBean localContainerEntityManagerFactoryBean =
+        new LocalContainerEntityManagerFactoryBean();
+    localContainerEntityManagerFactoryBean.setPersistenceUnitName(getClass().getSimpleName());
+    localContainerEntityManagerFactoryBean.setPersistenceProvider(
+        new HibernatePersistenceProvider());
+    localContainerEntityManagerFactoryBean.setDataSource(dataSource());
+    localContainerEntityManagerFactoryBean.setPackagesToScan(packagesToScan());
 
-        JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        localContainerEntityManagerFactoryBean.setJpaVendorAdapter(vendorAdapter);
-        localContainerEntityManagerFactoryBean.setJpaProperties(additionalProperties());
-        return localContainerEntityManagerFactoryBean;
-    }
+    JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+    localContainerEntityManagerFactoryBean.setJpaVendorAdapter(vendorAdapter);
+    localContainerEntityManagerFactoryBean.setJpaProperties(additionalProperties());
+    return localContainerEntityManagerFactoryBean;
+  }
 
-    @Bean
-    public JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory){
-        JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(entityManagerFactory);
-        return transactionManager;
-    }
+  @Bean
+  public JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+    JpaTransactionManager transactionManager = new JpaTransactionManager();
+    transactionManager.setEntityManagerFactory(entityManagerFactory);
+    return transactionManager;
+  }
 
-    @Bean
-    public TransactionTemplate transactionTemplate(EntityManagerFactory entityManagerFactory) {
-        return new TransactionTemplate(transactionManager(entityManagerFactory));
-    }
+  @Bean
+  public TransactionTemplate transactionTemplate(EntityManagerFactory entityManagerFactory) {
+    return new TransactionTemplate(transactionManager(entityManagerFactory));
+  }
 
-    protected Properties additionalProperties() {
-        Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", hibernateDialect);
-        /*properties.setProperty("hibernate.hbm2ddl.auto", "validate");*/
-        return properties;
-    }
+  protected Properties additionalProperties() {
+    Properties properties = new Properties();
+    properties.setProperty("hibernate.dialect", hibernateDialect);
+    /*properties.setProperty("hibernate.hbm2ddl.auto", "validate");*/
+    return properties;
+  }
 
-    protected String[] packagesToScan() {
-        return new String[]{
-            configurationClass().getPackage().getName()
-        };
-    }
+  protected String[] packagesToScan() {
+    return new String[] {configurationClass().getPackage().getName()};
+  }
 
-    protected Class configurationClass() {
-        return this.getClass();
-    }
+  protected Class configurationClass() {
+    return this.getClass();
+  }
 }

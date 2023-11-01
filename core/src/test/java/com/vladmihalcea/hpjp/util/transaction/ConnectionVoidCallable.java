@@ -8,5 +8,5 @@ import java.sql.SQLException;
  */
 @FunctionalInterface
 public interface ConnectionVoidCallable {
-	void execute(Connection connection) throws SQLException;
+  void execute(Connection connection) throws SQLException;
 }

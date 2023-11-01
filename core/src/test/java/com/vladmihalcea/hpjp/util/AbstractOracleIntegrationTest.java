@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.util.providers.Database;
  */
 public abstract class AbstractOracleIntegrationTest extends AbstractTest {
 
-    @Override
-    protected Database database() {
-        return Database.ORACLE;
-    }
+  @Override
+  protected Database database() {
+    return Database.ORACLE;
+  }
 }

@@ -5,12 +5,11 @@ import com.vladmihalcea.hpjp.spring.data.projection.dto.PostCommentDTO;
 import com.vladmihalcea.hpjp.spring.data.projection.dto.PostCommentRecord;
 import com.vladmihalcea.hpjp.spring.data.projection.dto.PostCommentSummary;
 import jakarta.persistence.Tuple;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 /**
  * @author Vlad Mihalcea
@@ -18,34 +17,37 @@ import java.util.List;
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long>, CustomPostRepository {
 
-    @Query("""
-        select 
-            p.id as id, 
-            p.title as title, 
+  @Query(
+      """
+        select
+            p.id as id,
+            p.title as title,
             c.review as review
         from PostComment c
         join c.post p
         where p.title like :postTitle
         order by c.id
         """)
-    List<Tuple> findAllCommentTuplesByPostTitle(@Param("postTitle") String postTitle);
+  List<Tuple> findAllCommentTuplesByPostTitle(@Param("postTitle") String postTitle);
 
-    @Query("""
-        select 
-            p.id as id, 
-            p.title as title, 
+  @Query(
+      """
+        select
+            p.id as id,
+            p.title as title,
             c.review as review
         from PostComment c
         join c.post p
         where p.title like :postTitle
         order by c.id
         """)
-    List<PostCommentSummary> findAllCommentSummariesByPostTitle(@Param("postTitle") String postTitle);
+  List<PostCommentSummary> findAllCommentSummariesByPostTitle(@Param("postTitle") String postTitle);
 
-    @Query("""
+  @Query(
+      """
         select new PostCommentDTO(
-            p.id as id, 
-            p.title as title, 
+            p.id as id,
+            p.title as title,
             c.review as review
         )
         from PostComment c
@@ -53,12 +55,13 @@ public interface PostRepository extends JpaRepository<Post, Long>, CustomPostRep
         where p.title like :postTitle
         order by c.id
         """)
-    List<PostCommentDTO> findCommentDTOByPostTitle(@Param("postTitle") String postTitle);
+  List<PostCommentDTO> findCommentDTOByPostTitle(@Param("postTitle") String postTitle);
 
-    @Query("""
+  @Query(
+      """
         select new PostCommentRecord(
-            p.id as id, 
-            p.title as title, 
+            p.id as id,
+            p.title as title,
             c.review as review
         )
         from PostComment c
@@ -66,5 +69,5 @@ public interface PostRepository extends JpaRepository<Post, Long>, CustomPostRep
         where p.title like :postTitle
         order by c.id
         """)
-    List<PostCommentRecord> findCommentRecordByPostTitle(@Param("postTitle") String postTitle);
+  List<PostCommentRecord> findCommentRecordByPostTitle(@Param("postTitle") String postTitle);
 }

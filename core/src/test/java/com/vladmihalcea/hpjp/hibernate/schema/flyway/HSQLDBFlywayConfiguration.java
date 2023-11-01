@@ -7,5 +7,4 @@ import org.springframework.context.annotation.Configuration;
  * @author Vlad Mihalcea
  */
 @Configuration
-public class HSQLDBFlywayConfiguration extends AbstractHSQLDBFlywayConfiguration {
-}
+public class HSQLDBFlywayConfiguration extends AbstractHSQLDBFlywayConfiguration {}

@@ -17,68 +17,59 @@ import org.slf4j.LoggerFactory;
  */
 public class RootAwareUpdateAndDeleteEventListener implements FlushEntityEventListener {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RootAwareUpdateAndDeleteEventListener.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(RootAwareUpdateAndDeleteEventListener.class);
 
-    public static final RootAwareUpdateAndDeleteEventListener INSTANCE = new RootAwareUpdateAndDeleteEventListener();
+  public static final RootAwareUpdateAndDeleteEventListener INSTANCE =
+      new RootAwareUpdateAndDeleteEventListener();
 
-    @Override
-    public void onFlushEntity(FlushEntityEvent event) throws HibernateException {
-        final EntityEntry entry = event.getEntityEntry();
-        final Object entity = event.getEntity();
-        final boolean mightBeDirty = entry.requiresDirtyCheck(entity);
+  @Override
+  public void onFlushEntity(FlushEntityEvent event) throws HibernateException {
+    final EntityEntry entry = event.getEntityEntry();
+    final Object entity = event.getEntity();
+    final boolean mightBeDirty = entry.requiresDirtyCheck(entity);
 
-        if (mightBeDirty && entity instanceof RootAware rootAware) {
-            if (isEntityUpdated(event)) {
-                Object root = rootAware.root();
-                LOGGER.info(
-                    "Incrementing the [{}] entity version " +
-                    "because the [{}] child entity has been updated",
-                    root,
-                    entity
-                );
-                event.getSession().lock(root, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
-            } else if (isEntityDeleted(event)) {
-                Object root = rootAware.root();
-                LOGGER.info(
-                    "Incrementing the [{}] entity version " +
-                    "because the [{}] child entity has been deleted",
-                    root,
-                    entity
-                );
-                event.getSession().lock(root, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
-            }
-        }
+    if (mightBeDirty && entity instanceof RootAware rootAware) {
+      if (isEntityUpdated(event)) {
+        Object root = rootAware.root();
+        LOGGER.info(
+            "Incrementing the [{}] entity version "
+                + "because the [{}] child entity has been updated",
+            root,
+            entity);
+        event.getSession().lock(root, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+      } else if (isEntityDeleted(event)) {
+        Object root = rootAware.root();
+        LOGGER.info(
+            "Incrementing the [{}] entity version "
+                + "because the [{}] child entity has been deleted",
+            root,
+            entity);
+        event.getSession().lock(root, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+      }
+    }
+  }
+
+  private boolean isEntityUpdated(FlushEntityEvent event) {
+    final EntityEntry entry = event.getEntityEntry();
+    final Object entity = event.getEntity();
+
+    int[] dirtyProperties;
+    EntityPersister persister = entry.getPersister();
+    final Object[] values = event.getPropertyValues();
+    SessionImplementor session = event.getSession();
+
+    if (event.hasDatabaseSnapshot()) {
+      dirtyProperties =
+          persister.findModified(event.getDatabaseSnapshot(), values, entity, session);
+    } else {
+      dirtyProperties = persister.findDirty(values, entry.getLoadedState(), entity, session);
     }
 
-    private boolean isEntityUpdated(FlushEntityEvent event) {
-        final EntityEntry entry = event.getEntityEntry();
-        final Object entity = event.getEntity();
+    return dirtyProperties != null;
+  }
 
-        int[] dirtyProperties;
-        EntityPersister persister = entry.getPersister();
-        final Object[] values = event.getPropertyValues();
-        SessionImplementor session = event.getSession();
-
-        if (event.hasDatabaseSnapshot()) {
-            dirtyProperties = persister.findModified(
-                event.getDatabaseSnapshot(),
-                values,
-                entity,
-                session
-            );
-        } else {
-            dirtyProperties = persister.findDirty(
-                values,
-                entry.getLoadedState(),
-                entity,
-                session
-            );
-        }
-
-        return dirtyProperties != null;
-    }
-
-    private boolean isEntityDeleted(FlushEntityEvent event) {
-        return event.getEntityEntry().getStatus() == Status.DELETED;
-    }
+  private boolean isEntityDeleted(FlushEntityEvent event) {
+    return event.getEntityEntry().getStatus() == Status.DELETED;
+  }
 }

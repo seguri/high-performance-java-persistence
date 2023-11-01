@@ -1,194 +1,180 @@
 package com.vladmihalcea.hpjp.hibernate.mapping.encrypt;
 
+import static org.junit.Assert.assertEquals;
+
 import com.vladmihalcea.hpjp.util.AbstractTest;
-import com.vladmihalcea.hpjp.util.providers.Database;
 import com.vladmihalcea.hpjp.util.ReflectionUtils;
+import com.vladmihalcea.hpjp.util.providers.Database;
+import jakarta.persistence.*;
 import org.hibernate.Session;
 import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.junit.Test;
 
-import jakarta.persistence.*;
-
-import static org.junit.Assert.assertEquals;
-
 /**
  * @author Vlad Mihalcea
  */
 public class MySQLEncryptTest extends AbstractTest {
 
-	@Override
-	protected Class<?>[] entities() {
-		return new Class<?>[] {
-			User.class,
-			UserDetails.class,
-		};
-	}
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {
+      User.class, UserDetails.class,
+    };
+  }
 
-	@Override
-	protected Database database() {
-		return Database.MYSQL;
-	}
+  @Override
+  protected Database database() {
+    return Database.MYSQL;
+  }
 
-	@Test
-	public void test() {
-		doInJPA(entityManager -> {
-			setEncryptionKey(entityManager);
+  @Test
+  public void test() {
+    doInJPA(
+        entityManager -> {
+          setEncryptionKey(entityManager);
 
-			User user = new User()
-				.setId(1L)
-				.setUsername("vladmihalcea");
+          User user = new User().setId(1L).setUsername("vladmihalcea");
 
-			entityManager.persist(user);
+          entityManager.persist(user);
 
-			entityManager.persist(
-				new UserDetails()
-					.setUser(user)
-					.setFirstName("Vlad")
-					.setLastName("Mihalcea")
-					.setEmailAddress("vlad@vladmihalcea.com")
-			);
-		});
+          entityManager.persist(
+              new UserDetails()
+                  .setUser(user)
+                  .setFirstName("Vlad")
+                  .setLastName("Mihalcea")
+                  .setEmailAddress("vlad@vladmihalcea.com"));
+        });
 
-		doInJPA(entityManager -> {
-			setEncryptionKey(entityManager);
-			
-			UserDetails userDetails = entityManager.find(
-				UserDetails.class,
-				1L
-			);
+    doInJPA(
+        entityManager -> {
+          setEncryptionKey(entityManager);
 
-			assertEquals("Vlad", userDetails.getFirstName());
-			assertEquals("Mihalcea", userDetails.getLastName());
-			assertEquals("vlad@vladmihalcea.com", userDetails.getEmailAddress());
-		});
-	}
+          UserDetails userDetails = entityManager.find(UserDetails.class, 1L);
 
-	private void setEncryptionKey(EntityManager entityManager) {
-		Session session = entityManager.unwrap(Session.class);
-		Dialect dialect = session.getSessionFactory().unwrap(SessionFactoryImplementor.class).getJdbcServices().getDialect();
-		String encryptionKey = ReflectionUtils.invokeMethod(
-			dialect,
-			"inlineLiteral",
-			"encryptionKey"
-		);
+          assertEquals("Vlad", userDetails.getFirstName());
+          assertEquals("Mihalcea", userDetails.getLastName());
+          assertEquals("vlad@vladmihalcea.com", userDetails.getEmailAddress());
+        });
+  }
 
-		session.doWork(connection -> {
-			update(
-				connection,
-				String.format(
-					"SET @encryption_key = %s", encryptionKey
-				)
-			);
-		});
-	}
+  private void setEncryptionKey(EntityManager entityManager) {
+    Session session = entityManager.unwrap(Session.class);
+    Dialect dialect =
+        session
+            .getSessionFactory()
+            .unwrap(SessionFactoryImplementor.class)
+            .getJdbcServices()
+            .getDialect();
+    String encryptionKey = ReflectionUtils.invokeMethod(dialect, "inlineLiteral", "encryptionKey");
 
-	@Entity
-	@Table(name = "users")
-	public static class User {
+    session.doWork(
+        connection -> {
+          update(connection, String.format("SET @encryption_key = %s", encryptionKey));
+        });
+  }
 
-		@Id
-		private Long id;
+  @Entity
+  @Table(name = "users")
+  public static class User {
 
-		private String username;
+    @Id private Long id;
 
-		public Long getId() {
-			return id;
-		}
+    private String username;
 
-		public User setId(Long id) {
-			this.id = id;
-			return this;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public String getUsername() {
-			return username;
-		}
+    public User setId(Long id) {
+      this.id = id;
+      return this;
+    }
 
-		public User setUsername(String username) {
-			this.username = username;
-			return this;
-		}
-	}
+    public String getUsername() {
+      return username;
+    }
 
-	@Entity
-	@Table(name = "user_details")
-	public static class UserDetails {
+    public User setUsername(String username) {
+      this.username = username;
+      return this;
+    }
+  }
 
-		@Id
-		private Long id;
+  @Entity
+  @Table(name = "user_details")
+  public static class UserDetails {
 
-		@OneToOne(fetch = FetchType.LAZY)
-		@MapsId
-		@JoinColumn(name = "id")
-		private User user;
+    @Id private Long id;
 
-		@ColumnTransformer(
-			read = "AES_DECRYPT(first_name, @encryption_key)",
-			write = "AES_ENCRYPT(?, @encryption_key)"
-		)
-		@Column(name = "first_name", columnDefinition = "VARBINARY(100)")
-		private String firstName;
+    @OneToOne(fetch = FetchType.LAZY)
+    @MapsId
+    @JoinColumn(name = "id")
+    private User user;
 
-		@ColumnTransformer(
-			read = "AES_DECRYPT(last_name, @encryption_key)",
-			write = "AES_ENCRYPT(?, @encryption_key)"
-		)
-		@Column(name = "last_name", columnDefinition = "VARBINARY(100)")
-		private String lastName;
+    @ColumnTransformer(
+        read = "AES_DECRYPT(first_name, @encryption_key)",
+        write = "AES_ENCRYPT(?, @encryption_key)")
+    @Column(name = "first_name", columnDefinition = "VARBINARY(100)")
+    private String firstName;
 
-		@ColumnTransformer(
-			read = "AES_DECRYPT(email_address, @encryption_key)",
-			write = "AES_ENCRYPT(?, @encryption_key)"
-		)
-		@Column(name = "email_address", columnDefinition = "VARBINARY(100)")
-		private String emailAddress;
+    @ColumnTransformer(
+        read = "AES_DECRYPT(last_name, @encryption_key)",
+        write = "AES_ENCRYPT(?, @encryption_key)")
+    @Column(name = "last_name", columnDefinition = "VARBINARY(100)")
+    private String lastName;
 
-		public Long getId() {
-			return id;
-		}
+    @ColumnTransformer(
+        read = "AES_DECRYPT(email_address, @encryption_key)",
+        write = "AES_ENCRYPT(?, @encryption_key)")
+    @Column(name = "email_address", columnDefinition = "VARBINARY(100)")
+    private String emailAddress;
 
-		public UserDetails setId(Long id) {
-			this.id = id;
-			return this;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public User getUser() {
-			return user;
-		}
+    public UserDetails setId(Long id) {
+      this.id = id;
+      return this;
+    }
 
-		public UserDetails setUser(User user) {
-			this.user = user;
-			this.id = user.getId();
-			return this;
-		}
+    public User getUser() {
+      return user;
+    }
 
-		public String getFirstName() {
-			return firstName;
-		}
+    public UserDetails setUser(User user) {
+      this.user = user;
+      this.id = user.getId();
+      return this;
+    }
 
-		public UserDetails setFirstName(String firstName) {
-			this.firstName = firstName;
-			return this;
-		}
+    public String getFirstName() {
+      return firstName;
+    }
 
-		public String getLastName() {
-			return lastName;
-		}
+    public UserDetails setFirstName(String firstName) {
+      this.firstName = firstName;
+      return this;
+    }
 
-		public UserDetails setLastName(String lastName) {
-			this.lastName = lastName;
-			return this;
-		}
+    public String getLastName() {
+      return lastName;
+    }
 
-		public String getEmailAddress() {
-			return emailAddress;
-		}
+    public UserDetails setLastName(String lastName) {
+      this.lastName = lastName;
+      return this;
+    }
 
-		public UserDetails setEmailAddress(String emailAddress) {
-			this.emailAddress = emailAddress;
-			return this;
-		}
-	}
+    public String getEmailAddress() {
+      return emailAddress;
+    }
+
+    public UserDetails setEmailAddress(String emailAddress) {
+      this.emailAddress = emailAddress;
+      return this;
+    }
+  }
 }

@@ -1,7 +1,12 @@
 package com.vladmihalcea.hpjp.hibernate.mapping.softdelete;
 
+import static org.junit.Assert.*;
+
 import com.vladmihalcea.hpjp.util.AbstractTest;
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.annotations.Loader;
 import org.hibernate.annotations.NaturalId;
@@ -9,533 +14,551 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 import org.junit.Test;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import static org.junit.Assert.*;
-
 /**
  * @author Vlad Mihalcea
  */
 public class SoftDeleteVersionTest extends AbstractTest {
 
-	@Override
-	protected Class<?>[] entities() {
-		return new Class<?>[] {
-			Post.class,
-			PostDetails.class,
-			PostComment.class,
-			Tag.class
-		};
-	}
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Post.class, PostDetails.class, PostComment.class, Tag.class};
+  }
 
-	@Override
-	public void afterInit() {
-		doInJPA( entityManager -> {
-			entityManager.persist(new Tag().setName("Java"));
-			entityManager.persist(new Tag().setName("JPA"));
-			entityManager.persist(new Tag().setName("Hibernate"));
-			entityManager.persist(new Tag().setName("Misc"));
-		} );
-	}
+  @Override
+  public void afterInit() {
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(new Tag().setName("Java"));
+          entityManager.persist(new Tag().setName("JPA"));
+          entityManager.persist(new Tag().setName("Hibernate"));
+          entityManager.persist(new Tag().setName("Misc"));
+        });
+  }
 
-	@Test
-	public void testRemoveTag() {
-		doInJPA(entityManager -> {
-			Post post = new Post()
-				.setTitle("High-Performance Java Persistence");
+  @Test
+  public void testRemoveTag() {
+    doInJPA(
+        entityManager -> {
+          Post post = new Post().setTitle("High-Performance Java Persistence");
 
-			entityManager.persist(post);
+          entityManager.persist(post);
 
-			Session session = entityManager.unwrap(Session.class);
+          Session session = entityManager.unwrap(Session.class);
 
-			post.addTag(session.bySimpleNaturalId(Tag.class).getReference("Java"));
-			post.addTag(session.bySimpleNaturalId(Tag.class).getReference("Hibernate"));
-			post.addTag(session.bySimpleNaturalId(Tag.class).getReference("Misc"));
-		});
+          post.addTag(session.bySimpleNaturalId(Tag.class).getReference("Java"));
+          post.addTag(session.bySimpleNaturalId(Tag.class).getReference("Hibernate"));
+          post.addTag(session.bySimpleNaturalId(Tag.class).getReference("Misc"));
+        });
 
-		doInJPA(entityManager -> {
-			Post post = entityManager.find(Post.class, 1L);
-			assertEquals(3, post.getTags().size());
-		});
+    doInJPA(
+        entityManager -> {
+          Post post = entityManager.find(Post.class, 1L);
+          assertEquals(3, post.getTags().size());
+        });
 
-		Tag miscTag = doInJPA(entityManager -> {
-			return entityManager.unwrap(Session.class).bySimpleNaturalId(Tag.class).getReference("Misc");
-		});
+    Tag miscTag =
+        doInJPA(
+            entityManager -> {
+              return entityManager
+                  .unwrap(Session.class)
+                  .bySimpleNaturalId(Tag.class)
+                  .getReference("Misc");
+            });
 
-		doInJPA(entityManager -> {
-			entityManager.remove(miscTag);
-		});
+    doInJPA(
+        entityManager -> {
+          entityManager.remove(miscTag);
+        });
 
-		doInJPA(entityManager -> {
-			LOGGER.info("Load post entity");
-			Post post = entityManager.find(Post.class, 1L);
-			LOGGER.info("Load associated Tag entities");
-			assertEquals(2, post.getTags().size());
-		});
+    doInJPA(
+        entityManager -> {
+          LOGGER.info("Load post entity");
+          Post post = entityManager.find(Post.class, 1L);
+          LOGGER.info("Load associated Tag entities");
+          assertEquals(2, post.getTags().size());
+        });
 
-		doInJPA(entityManager -> {
-			//That would not work without @Loader(namedQuery = "findTagById")
-			assertNull(entityManager.find(Tag.class, miscTag.getId()));
+    doInJPA(
+        entityManager -> {
+          // That would not work without @Loader(namedQuery = "findTagById")
+          assertNull(entityManager.find(Tag.class, miscTag.getId()));
 
-			assertEquals(
-				miscTag.getName(),
-				entityManager.createNativeQuery("""
-					SELECT 
+          assertEquals(
+              miscTag.getName(),
+              entityManager
+                  .createNativeQuery(
+                      """
+					SELECT
 						name
-					FROM 
+					FROM
 						tag
 					WHERE
-						id = :id  
+						id = :id
 					""")
-				.setParameter("id", miscTag.getId())
-				.getSingleResult()
-			);
-		});
+                  .setParameter("id", miscTag.getId())
+                  .getSingleResult());
+        });
 
-		doInJPA(entityManager -> {
-			List<Tag> tags = entityManager.createQuery("""
+    doInJPA(
+        entityManager -> {
+          List<Tag> tags =
+              entityManager
+                  .createQuery("""
    				select t
    				from Tag t
    				""", Tag.class)
-				.getResultList();
-			//That would not work without @Where(clause = "deleted = false")
-			assertEquals(3, tags.size());
-		});
-	}
+                  .getResultList();
+          // That would not work without @Where(clause = "deleted = false")
+          assertEquals(3, tags.size());
+        });
+  }
 
-	@Test
-	public void testRemovePostDetails() {
-		doInJPA(entityManager -> {
-			entityManager.persist(
-				new Post()
-					.setTitle("High-Performance Java Persistence")
-					.addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
-					.addComment(new PostComment().setReview("Excellent!"))
-					.addComment(new PostComment().setReview("Great!"))
-			);
-		});
+  @Test
+  public void testRemovePostDetails() {
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(
+              new Post()
+                  .setTitle("High-Performance Java Persistence")
+                  .addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
+                  .addComment(new PostComment().setReview("Excellent!"))
+                  .addComment(new PostComment().setReview("Great!")));
+        });
 
-		doInJPA(entityManager -> {
-			Post post = entityManager.createQuery("""
+    doInJPA(
+        entityManager -> {
+          Post post =
+              entityManager
+                  .createQuery(
+                      """
        			select p
        			from Post p
        			join fetch p.details
-       			where p.title = :title	
-   				""", Post.class)
-			.setParameter("title", "High-Performance Java Persistence")
-			.getSingleResult();
+       			where p.title = :title
+   				""",
+                      Post.class)
+                  .setParameter("title", "High-Performance Java Persistence")
+                  .getSingleResult();
 
-			assertNotNull(post.getDetails());
+          assertNotNull(post.getDetails());
 
-			post.removeDetails();
-		});
+          post.removeDetails();
+        });
 
-		doInJPA(entityManager -> {
-			Post post = entityManager.find(Post.class, 1L);
-			assertNull(post.getDetails());
-		});
+    doInJPA(
+        entityManager -> {
+          Post post = entityManager.find(Post.class, 1L);
+          assertNull(post.getDetails());
+        });
 
-		doInJPA(entityManager -> {
-			assertNull(entityManager.find(PostDetails.class, 1L));
-		});
-	}
+    doInJPA(
+        entityManager -> {
+          assertNull(entityManager.find(PostDetails.class, 1L));
+        });
+  }
 
-	@Test
-	public void testRemovePostComment() {
-		doInJPA(entityManager -> {
-			entityManager.persist(
-				new Post()
-					.setTitle("High-Performance Java Persistence")
-					.addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
-					.addComment(new PostComment().setReview("Excellent!"))
-					.addComment(new PostComment().setReview("Great!"))
-			);
-		});
+  @Test
+  public void testRemovePostComment() {
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(
+              new Post()
+                  .setTitle("High-Performance Java Persistence")
+                  .addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
+                  .addComment(new PostComment().setReview("Excellent!"))
+                  .addComment(new PostComment().setReview("Great!")));
+        });
 
-		doInJPA(entityManager -> {
-			Post post = entityManager.find(Post.class, 1L);
-			assertEquals(2, post.getComments().size());
-			assertNotNull(entityManager.find(PostComment.class, 2L));
-			post.removeComment(post.getComments().get(1));
-		});
+    doInJPA(
+        entityManager -> {
+          Post post = entityManager.find(Post.class, 1L);
+          assertEquals(2, post.getComments().size());
+          assertNotNull(entityManager.find(PostComment.class, 2L));
+          post.removeComment(post.getComments().get(1));
+        });
 
-		doInJPA(entityManager -> {
-			Post post = entityManager.find(Post.class, 1L);
-			assertEquals(1, post.getComments().size());
-			assertNull(entityManager.find(PostComment.class, 2L));
-		});
-	}
+    doInJPA(
+        entityManager -> {
+          Post post = entityManager.find(Post.class, 1L);
+          assertEquals(1, post.getComments().size());
+          assertNull(entityManager.find(PostComment.class, 2L));
+        });
+  }
 
-	@Test
-	public void testRemoveAndFindPostComment() {
-		doInJPA(entityManager -> {
-			entityManager.persist(
-				new Post()
-					.setTitle("High-Performance Java Persistence")
-					.addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
-					.addComment(new PostComment().setReview("Excellent!"))
-					.addComment(new PostComment().setReview("Great!"))
-			);
-		});
-		
-		doInJPA(entityManager -> {
-			Post post = entityManager.createQuery("""
+  @Test
+  public void testRemoveAndFindPostComment() {
+    doInJPA(
+        entityManager -> {
+          entityManager.persist(
+              new Post()
+                  .setTitle("High-Performance Java Persistence")
+                  .addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
+                  .addComment(new PostComment().setReview("Excellent!"))
+                  .addComment(new PostComment().setReview("Great!")));
+        });
+
+    doInJPA(
+        entityManager -> {
+          Post post =
+              entityManager
+                  .createQuery(
+                      """
        			select p
        			from Post p
        			left join fetch p.comments
-       			where p.title = :title	
-   				""", Post.class)
-			.setParameter("title", "High-Performance Java Persistence")
-			.getSingleResult();
+       			where p.title = :title
+   				""",
+                      Post.class)
+                  .setParameter("title", "High-Performance Java Persistence")
+                  .getSingleResult();
 
-			post.removeComment(post.getComments().get(0));
-		});
-		doInJPA(entityManager -> {
-			Post post = entityManager.find(Post.class, 1L);
-			assertEquals(1, post.getComments().size());
-		});
-	}
+          post.removeComment(post.getComments().get(0));
+        });
+    doInJPA(
+        entityManager -> {
+          Post post = entityManager.find(Post.class, 1L);
+          assertEquals(1, post.getComments().size());
+        });
+  }
 
-	@Test
-	public void testRemovePost() {
-		doInJPA(entityManager -> {
-			Session session = entityManager.unwrap(Session.class);
+  @Test
+  public void testRemovePost() {
+    doInJPA(
+        entityManager -> {
+          Session session = entityManager.unwrap(Session.class);
 
-			entityManager.persist(
-				new Post()
-					.setTitle("High-Performance Java Persistence")
-					.addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
-					.addComment(new PostComment().setReview("Excellent!"))
-					.addComment(new PostComment().setReview("Great!"))
-			);
-		});
+          entityManager.persist(
+              new Post()
+                  .setTitle("High-Performance Java Persistence")
+                  .addDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
+                  .addComment(new PostComment().setReview("Excellent!"))
+                  .addComment(new PostComment().setReview("Great!")));
+        });
 
-		doInJPA(entityManager -> {
-			Post post = entityManager.createQuery("""
+    doInJPA(
+        entityManager -> {
+          Post post =
+              entityManager
+                  .createQuery(
+                      """
        			select p
        			from Post p
        			left join fetch p.details
        			left join fetch p.comments
-       			where p.title = :title	
-   				""", Post.class)
-			.setParameter("title", "High-Performance Java Persistence")
-			.getSingleResult();
+       			where p.title = :title
+   				""",
+                      Post.class)
+                  .setParameter("title", "High-Performance Java Persistence")
+                  .getSingleResult();
 
-			entityManager.remove(post);
-		});
-		doInJPA(entityManager -> {
-			Post post = entityManager.find(Post.class, 1L);
-			assertNull(post);
-		});
-	}
+          entityManager.remove(post);
+        });
+    doInJPA(
+        entityManager -> {
+          Post post = entityManager.find(Post.class, 1L);
+          assertNull(post);
+        });
+  }
 
-	@Entity(name = "Post")
-	@Table(name = "post")
-	@SQLDelete(sql = """
+  @Entity(name = "Post")
+  @Table(name = "post")
+  @SQLDelete(
+      sql = """
 		UPDATE post
 		SET deleted = true
 		WHERE
 			id = ? AND
 			version = ?
 		""")
-	@Loader(namedQuery = "findPostById")
-	@NamedQuery(name = "findPostById", query = """
+  @Loader(namedQuery = "findPostById")
+  @NamedQuery(
+      name = "findPostById",
+      query = """
 		select p
 		from Post p
 		where
 			p.id = ?1 and
 			p.deleted = false
 		""")
-	@Where(clause = "deleted = false")
-	public static class Post extends SoftDeletable {
+  @Where(clause = "deleted = false")
+  public static class Post extends SoftDeletable {
 
-		@Id
-		@GeneratedValue
-		private Long id;
+    @Id @GeneratedValue private Long id;
 
-		private String title;
+    private String title;
 
-		@OneToMany(
-			mappedBy = "post",
-			cascade = CascadeType.ALL,
-			orphanRemoval = true
-		)
-		private List<PostComment> comments = new ArrayList<>();
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostComment> comments = new ArrayList<>();
 
-		@OneToOne(
-			mappedBy = "post",
-			cascade = CascadeType.ALL,
-			orphanRemoval = true,
-			fetch = FetchType.LAZY
-		)
-		private PostDetails details;
+    @OneToOne(
+        mappedBy = "post",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY)
+    private PostDetails details;
 
-		@ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-		@JoinTable(
-			name = "post_tag",
-			joinColumns = @JoinColumn(name = "post_id"),
-			inverseJoinColumns = @JoinColumn(name = "tag_id")
-		)
-		private List<Tag> tags = new ArrayList<>();
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+        name = "post_tag",
+        joinColumns = @JoinColumn(name = "post_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id"))
+    private List<Tag> tags = new ArrayList<>();
 
-		@Version
-		private short version;
+    @Version private short version;
 
-		public Long getId() {
-			return id;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public Post setId(Long id) {
-			this.id = id;
-			return this;
-		}
+    public Post setId(Long id) {
+      this.id = id;
+      return this;
+    }
 
-		public String getTitle() {
-			return title;
-		}
+    public String getTitle() {
+      return title;
+    }
 
-		public Post setTitle(String title) {
-			this.title = title;
-			return this;
-		}
+    public Post setTitle(String title) {
+      this.title = title;
+      return this;
+    }
 
-		public List<PostComment> getComments() {
-			return comments;
-		}
+    public List<PostComment> getComments() {
+      return comments;
+    }
 
-		public PostDetails getDetails() {
-			return details;
-		}
+    public PostDetails getDetails() {
+      return details;
+    }
 
-		public List<Tag> getTags() {
-			return tags;
-		}
+    public List<Tag> getTags() {
+      return tags;
+    }
 
-		public Post addComment(PostComment comment) {
-			comments.add(comment);
-			comment.setPost(this);
-			return this;
-		}
+    public Post addComment(PostComment comment) {
+      comments.add(comment);
+      comment.setPost(this);
+      return this;
+    }
 
-		public Post removeComment(PostComment comment) {
-			comments.remove(comment);
-			comment.setPost(null);
-			return this;
-		}
+    public Post removeComment(PostComment comment) {
+      comments.remove(comment);
+      comment.setPost(null);
+      return this;
+    }
 
-		public Post addDetails(PostDetails details) {
-			this.details = details;
-			details.setPost(this);
-			return this;
-		}
+    public Post addDetails(PostDetails details) {
+      this.details = details;
+      details.setPost(this);
+      return this;
+    }
 
-		public Post removeDetails() {
-			this.details.setPost(null);
-			this.details = null;
-			return this;
-		}
+    public Post removeDetails() {
+      this.details.setPost(null);
+      this.details = null;
+      return this;
+    }
 
-		public Post addTag(Tag tag) {
-			tags.add(tag);
-			return this;
-		}
-	}
+    public Post addTag(Tag tag) {
+      tags.add(tag);
+      return this;
+    }
+  }
 
-	@Entity(name = "PostDetails")
-	@Table(name = "post_details")
-	@SQLDelete(sql = """
+  @Entity(name = "PostDetails")
+  @Table(name = "post_details")
+  @SQLDelete(
+      sql =
+          """
 		UPDATE post_details
 		SET deleted = true
 		WHERE
 			id = ? AND
 			version = ?
 		""")
-	@Loader(namedQuery = "findPostDetailsById")
-	@NamedQuery(name = "findPostDetailsById", query = """
+  @Loader(namedQuery = "findPostDetailsById")
+  @NamedQuery(
+      name = "findPostDetailsById",
+      query =
+          """
 		select pd
 		from PostDetails pd
 		where
 			pd.id = ?1 and
 			pd.deleted = false
 		""")
-	@Where(clause = "deleted = false")
-	public static class PostDetails extends SoftDeletable {
+  @Where(clause = "deleted = false")
+  public static class PostDetails extends SoftDeletable {
 
-		@Id
-		@GeneratedValue
-		private Long id;
+    @Id @GeneratedValue private Long id;
 
-		@Column(name = "created_on")
-		private Date createdOn = new Date();
+    @Column(name = "created_on")
+    private Date createdOn = new Date();
 
-		@Column(name = "created_by")
-		private String createdBy;
+    @Column(name = "created_by")
+    private String createdBy;
 
-		@OneToOne(fetch = FetchType.LAZY)
-		@JoinColumn(name = "id")
-		@MapsId
-		private Post post;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id")
+    @MapsId
+    private Post post;
 
-		@Version
-		private short version;
+    @Version private short version;
 
-		public Long getId() {
-			return id;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public PostDetails setId(Long id) {
-			this.id = id;
-			return this;
-		}
+    public PostDetails setId(Long id) {
+      this.id = id;
+      return this;
+    }
 
-		public Post getPost() {
-			return post;
-		}
+    public Post getPost() {
+      return post;
+    }
 
-		public PostDetails setPost(Post post) {
-			this.post = post;
-			return this;
-		}
+    public PostDetails setPost(Post post) {
+      this.post = post;
+      return this;
+    }
 
-		public Date getCreatedOn() {
-			return createdOn;
-		}
+    public Date getCreatedOn() {
+      return createdOn;
+    }
 
-		public PostDetails setCreatedOn(Date createdOn) {
-			this.createdOn = createdOn;
-			return this;
-		}
+    public PostDetails setCreatedOn(Date createdOn) {
+      this.createdOn = createdOn;
+      return this;
+    }
 
-		public String getCreatedBy() {
-			return createdBy;
-		}
+    public String getCreatedBy() {
+      return createdBy;
+    }
 
-		public PostDetails setCreatedBy(String createdBy) {
-			this.createdBy = createdBy;
-			return this;
-		}
-	}
+    public PostDetails setCreatedBy(String createdBy) {
+      this.createdBy = createdBy;
+      return this;
+    }
+  }
 
-	@Entity(name = "PostComment")
-	@Table(name = "post_comment")
-	@SQLDelete(sql = """
+  @Entity(name = "PostComment")
+  @Table(name = "post_comment")
+  @SQLDelete(
+      sql =
+          """
 		UPDATE post_comment
 		SET deleted = true
 		WHERE
 			id = ? AND
 			version = ?
 		""")
-	@Loader(namedQuery = "findPostCommentById")
-	@NamedQuery(name = "findPostCommentById", query = """
+  @Loader(namedQuery = "findPostCommentById")
+  @NamedQuery(
+      name = "findPostCommentById",
+      query =
+          """
 		select pc
 		from PostComment pc
 		where
 			pc.id = ?1 and
 			pc.deleted = false
 		""")
-	@Where(clause = "deleted = false")
-	public static class PostComment extends SoftDeletable {
+  @Where(clause = "deleted = false")
+  public static class PostComment extends SoftDeletable {
 
-		@Id
-		@GeneratedValue
-		private Long id;
+    @Id @GeneratedValue private Long id;
 
-		@ManyToOne(fetch = FetchType.LAZY)
-		private Post post;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Post post;
 
-		private String review;
+    private String review;
 
-		@Version
-		private short version;
+    @Version private short version;
 
-		public Long getId() {
-			return id;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public PostComment setId(Long id) {
-			this.id = id;
-			return this;
-		}
+    public PostComment setId(Long id) {
+      this.id = id;
+      return this;
+    }
 
-		public Post getPost() {
-			return post;
-		}
+    public Post getPost() {
+      return post;
+    }
 
-		public PostComment setPost(Post post) {
-			this.post = post;
-			return this;
-		}
+    public PostComment setPost(Post post) {
+      this.post = post;
+      return this;
+    }
 
-		public String getReview() {
-			return review;
-		}
+    public String getReview() {
+      return review;
+    }
 
-		public PostComment setReview(String review) {
-			this.review = review;
-			return this;
-		}
-	}
+    public PostComment setReview(String review) {
+      this.review = review;
+      return this;
+    }
+  }
 
-	@Entity(name = "Tag")
-	@Table(name = "tag")
-	@SQLDelete(sql = """
+  @Entity(name = "Tag")
+  @Table(name = "tag")
+  @SQLDelete(sql = """
 		UPDATE tag
 		SET deleted = true
 		WHERE
 			id = ? AND
 			version = ?
 		""")
-	@Loader(namedQuery = "findTagById")
-	@NamedQuery(name = "findTagById", query = """
+  @Loader(namedQuery = "findTagById")
+  @NamedQuery(
+      name = "findTagById",
+      query = """
 		select t
 		from Tag t
 		where
 			t.id = ?1 and
 			t.deleted = false
 		""")
-	@Where(clause = "deleted = false")
-	public static class Tag extends SoftDeletable {
+  @Where(clause = "deleted = false")
+  public static class Tag extends SoftDeletable {
 
-		@Id
-		@GeneratedValue
-		private Long id;
+    @Id @GeneratedValue private Long id;
 
-		@NaturalId
-		private String name;
+    @NaturalId private String name;
 
-		@Version
-		private short version;
+    @Version private short version;
 
-		public Long getId() {
-			return id;
-		}
+    public Long getId() {
+      return id;
+    }
 
-		public Tag setId(Long id) {
-			this.id = id;
-			return this;
-		}
+    public Tag setId(Long id) {
+      this.id = id;
+      return this;
+    }
 
-		public String getName() {
-			return name;
-		}
+    public String getName() {
+      return name;
+    }
 
-		public Tag setName(String name) {
-			this.name = name;
-			return this;
-		}
-	}
+    public Tag setName(String name) {
+      this.name = name;
+      return this;
+    }
+  }
 
-	@MappedSuperclass
-	public static abstract class SoftDeletable {
+  @MappedSuperclass
+  public abstract static class SoftDeletable {
 
-		private boolean deleted;
+    private boolean deleted;
 
-		public boolean isDeleted() {
-			return deleted;
-		}
-	}
+    public boolean isDeleted() {
+      return deleted;
+    }
+  }
 }

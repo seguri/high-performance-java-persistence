@@ -1,63 +1,58 @@
 package com.vladmihalcea.hpjp.hibernate.view;
 
+import static com.vladmihalcea.hpjp.util.providers.entity.BlogEntityProvider.*;
+import static org.junit.Assert.assertEquals;
+
 import com.vladmihalcea.hpjp.util.AbstractPostgreSQLIntegrationTest;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.Immutable;
-import org.junit.Test;
-
 import java.util.List;
 import java.util.Properties;
-
-import static com.vladmihalcea.hpjp.util.providers.entity.BlogEntityProvider.*;
-import static org.junit.Assert.assertEquals;
+import org.hibernate.annotations.Immutable;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
 public class ViewTest extends AbstractPostgreSQLIntegrationTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[]{
-            Post.class,
-            PostDetails.class,
-            PostComment.class,
-            Tag.class,
-            DatabaseFunction.class
-        };
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {
+      Post.class, PostDetails.class, PostComment.class, Tag.class, DatabaseFunction.class
+    };
+  }
+
+  @Override
+  protected void additionalProperties(Properties properties) {
+    properties.put("hibernate.hbm2ddl.auto", "none");
+  }
+
+  @Entity(name = "DatabaseFunction")
+  @Immutable
+  @Table(name = "database_functions")
+  public static class DatabaseFunction {
+
+    @Id private String name;
+
+    private String params;
+
+    public String getName() {
+      return name;
     }
 
-    @Override
-    protected void additionalProperties(Properties properties) {
-        properties.put("hibernate.hbm2ddl.auto", "none");
+    public String[] getParams() {
+      return params.split(",");
     }
+  }
 
-    @Entity(name = "DatabaseFunction")
-    @Immutable
-    @Table(name = "database_functions")
-    public static class DatabaseFunction {
-
-        @Id
-        private String name;
-
-        private String params;
-
-        public String getName() {
-            return name;
-        }
-
-        public String[] getParams() {
-            return params.split(",");
-        }
-    }
-
-    @Override
-    protected void beforeInit() {
-        executeStatement("DROP FUNCTION IF EXISTS fn_count_comments(bigint)");
-        executeStatement("DROP FUNCTION IF EXISTS fn_post_comments(bigint)");
-        executeStatement("""
+  @Override
+  protected void beforeInit() {
+    executeStatement("DROP FUNCTION IF EXISTS fn_count_comments(bigint)");
+    executeStatement("DROP FUNCTION IF EXISTS fn_post_comments(bigint)");
+    executeStatement(
+        """
             CREATE OR REPLACE FUNCTION fn_count_comments(
                IN postId bigint,
                OUT commentCount bigint)
@@ -71,7 +66,8 @@ public class ViewTest extends AbstractPostgreSQLIntegrationTest {
             $BODY$
             LANGUAGE plpgsql;
             """);
-        executeStatement("""
+    executeStatement(
+        """
             CREATE OR REPLACE FUNCTION fn_post_comments(postId BIGINT)
                RETURNS REFCURSOR AS
             $BODY$
@@ -87,7 +83,8 @@ public class ViewTest extends AbstractPostgreSQLIntegrationTest {
             $BODY$
             LANGUAGE plpgsql
             """);
-        executeStatement("""
+    executeStatement(
+        """
             CREATE OR REPLACE VIEW database_functions AS
             SELECT
                 functions.routine_name as name,
@@ -109,26 +106,31 @@ public class ViewTest extends AbstractPostgreSQLIntegrationTest {
             ) AS functions
             GROUP BY functions.routine_name
             """);
-    }
+  }
 
-    @Test
-    public void testStoredProcedureOutParameter() {
-        doInJPA(entityManager -> {
-            List<DatabaseFunction> databaseFunctions = entityManager.createQuery("""
+  @Test
+  public void testStoredProcedureOutParameter() {
+    doInJPA(
+        entityManager -> {
+          List<DatabaseFunction> databaseFunctions =
+              entityManager
+                  .createQuery(
+                      """
                 SELECT df
                 FROM DatabaseFunction df
-                """, DatabaseFunction.class)
-            .getResultList();
+                """,
+                      DatabaseFunction.class)
+                  .getResultList();
 
-            DatabaseFunction countComments = databaseFunctions.get(0);
-            assertEquals("fn_count_comments", countComments.getName());
-            assertEquals(2, countComments.getParams().length);
-            assertEquals("bigint", countComments.getParams()[0]);
+          DatabaseFunction countComments = databaseFunctions.get(0);
+          assertEquals("fn_count_comments", countComments.getName());
+          assertEquals(2, countComments.getParams().length);
+          assertEquals("bigint", countComments.getParams()[0]);
 
-            DatabaseFunction postComments = databaseFunctions.get(1);
-            assertEquals("fn_post_comments", postComments.getName());
-            assertEquals(1, postComments.getParams().length);
-            assertEquals("bigint", postComments.getParams()[0]);
+          DatabaseFunction postComments = databaseFunctions.get(1);
+          assertEquals("fn_post_comments", postComments.getName());
+          assertEquals(1, postComments.getParams().length);
+          assertEquals("bigint", postComments.getParams()[0]);
         });
-    }
+  }
 }

@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.util.providers.Database;
  */
 public abstract class AbstractPostgreSQLIntegrationTest extends AbstractTest {
 
-    @Override
-    protected Database database() {
-        return Database.POSTGRESQL;
-    }
+  @Override
+  protected Database database() {
+    return Database.POSTGRESQL;
+  }
 }

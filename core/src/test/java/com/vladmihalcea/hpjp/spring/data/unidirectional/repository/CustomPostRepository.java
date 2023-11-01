@@ -5,5 +5,5 @@ package com.vladmihalcea.hpjp.spring.data.unidirectional.repository;
  */
 public interface CustomPostRepository<ID> {
 
-    void deleteById(ID postId);
+  void deleteById(ID postId);
 }

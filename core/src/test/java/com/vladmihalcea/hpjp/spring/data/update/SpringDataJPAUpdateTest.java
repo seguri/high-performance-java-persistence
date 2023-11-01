@@ -22,42 +22,37 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringDataJPAUpdateTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Test
-    public void testDefaultUpdate() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            postRepository.persist(
-                new Post()
-                    .setId(1L)
-                    .setTitle("High-Performance Java Persistence")
-            );
+  @Test
+  public void testDefaultUpdate() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              postRepository.persist(
+                  new Post().setId(1L).setTitle("High-Performance Java Persistence"));
 
-            postRepository.persist(
-                new Post()
-                    .setId(2L)
-                    .setTitle("Java Persistence with Hibernate")
-            );
-            
-            return null;
-        });
-        
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Post post1 = postRepository.findById(1L).orElseThrow();
-            post1.setTitle("High-Performance Java Persistence 2nd Edition");
+              postRepository.persist(
+                  new Post().setId(2L).setTitle("Java Persistence with Hibernate"));
 
-            Post post2 = postRepository.findById(2L).orElseThrow();
-            post2.setLikes(12);
+              return null;
+            });
 
-            postRepository.flush();
-            return null;
-        });
-    }
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Post post1 = postRepository.findById(1L).orElseThrow();
+              post1.setTitle("High-Performance Java Persistence 2nd Edition");
+
+              Post post2 = postRepository.findById(2L).orElseThrow();
+              post2.setLikes(12);
+
+              postRepository.flush();
+              return null;
+            });
+  }
 }
-

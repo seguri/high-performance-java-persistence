@@ -7,20 +7,20 @@ import com.vladmihalcea.hpjp.util.CryptoUtils;
  */
 public class PostCommentDTO {
 
-    private final String id;
+  private final String id;
 
-    private final String review;
+  private final String review;
 
-    public PostCommentDTO(Long id, String review) {
-        this.id = CryptoUtils.encrypt(id);
-        this.review = review;
-    }
+  public PostCommentDTO(Long id, String review) {
+    this.id = CryptoUtils.encrypt(id);
+    this.review = review;
+  }
 
-    public String getId() {
-        return id;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public String getReview() {
-        return review;
-    }
+  public String getReview() {
+    return review;
+  }
 }

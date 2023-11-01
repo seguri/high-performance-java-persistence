@@ -8,8 +8,8 @@ import com.vladmihalcea.hpjp.util.providers.SQLServerDataSourceProvider;
  */
 public class SQLServerPredicateLockTest extends AbstractPredicateLockTest {
 
-    @Override
-    protected DataSourceProvider dataSourceProvider() {
-        return new SQLServerDataSourceProvider();
-    }
+  @Override
+  protected DataSourceProvider dataSourceProvider() {
+    return new SQLServerDataSourceProvider();
+  }
 }

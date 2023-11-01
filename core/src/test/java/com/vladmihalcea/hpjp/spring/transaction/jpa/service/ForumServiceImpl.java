@@ -1,21 +1,20 @@
 package com.vladmihalcea.hpjp.spring.transaction.jpa.service;
 
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import com.vladmihalcea.hpjp.hibernate.forum.dto.PostDTO;
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Post;
 import com.vladmihalcea.hpjp.spring.transaction.jpa.repository.PostRepository;
 import com.vladmihalcea.hpjp.spring.transaction.jpa.repository.TagRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 /**
  * @author Vlad Mihalcea
@@ -23,75 +22,73 @@ import static org.junit.Assert.assertTrue;
 @Service
 public class ForumServiceImpl implements ForumService {
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private TagRepository tagRepository;
+  @Autowired private TagRepository tagRepository;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Override
-    @Transactional
-    public Post newPost(String title, String... tags) {
-        Post post = new Post();
-        post.setTitle(title);
-        post.getTags().addAll(tagRepository.findByName(tags));
-        return postRepository.persist(post);
+  @Override
+  @Transactional
+  public Post newPost(String title, String... tags) {
+    Post post = new Post();
+    post.setTitle(title);
+    post.getTags().addAll(tagRepository.findByName(tags));
+    return postRepository.persist(post);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<Post> findAllByTitle(String title) {
+    List<Post> posts = postRepository.findByTitle(title);
+
+    org.hibernate.engine.spi.PersistenceContext persistenceContext =
+        getHibernatePersistenceContext();
+
+    for (Post post : posts) {
+      assertTrue(entityManager.contains(post));
+
+      EntityEntry entityEntry = persistenceContext.getEntry(post);
+      assertNull(entityEntry.getLoadedState());
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<Post> findAllByTitle(String title) {
-        List<Post> posts = postRepository.findByTitle(title);
+    return posts;
+  }
 
-        org.hibernate.engine.spi.PersistenceContext persistenceContext = getHibernatePersistenceContext();
+  @Override
+  @Transactional(readOnly = true)
+  public Post findById(Long id) {
+    Post post = postRepository.findById(id).orElseThrow();
 
-        for(Post post : posts) {
-            assertTrue(entityManager.contains(post));
+    org.hibernate.engine.spi.PersistenceContext persistenceContext =
+        getHibernatePersistenceContext();
 
-            EntityEntry entityEntry = persistenceContext.getEntry(post);
-            assertNull(entityEntry.getLoadedState());
-        }
+    EntityEntry entityEntry = persistenceContext.getEntry(post);
+    assertNull(entityEntry.getLoadedState());
 
-        return posts;
-    }
+    post.setTitle(null);
+    return post;
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Post findById(Long id) {
-        Post post = postRepository.findById(id).orElseThrow();
+  @Override
+  @Transactional(readOnly = true)
+  public PostDTO getPostDTOById(Long id) {
+    return postRepository.getPostDTOById(id);
+  }
 
-        org.hibernate.engine.spi.PersistenceContext persistenceContext = getHibernatePersistenceContext();
+  @Override
+  @Transactional
+  public PostDTO savePostTitle(Long id, String title) {
+    Post post = postRepository.findById(id).orElseThrow();
 
-        EntityEntry entityEntry = persistenceContext.getEntry(post);
-        assertNull(entityEntry.getLoadedState());
+    post.setTitle(title);
 
-        post.setTitle(null);
-        return post;
-    }
+    return postRepository.getPostDTOById(id);
+  }
 
-    @Override
-    @Transactional(readOnly = true)
-    public PostDTO getPostDTOById(Long id) {
-        return postRepository.getPostDTOById(id);
-    }
-
-    @Override
-    @Transactional
-    public PostDTO savePostTitle(Long id, String title) {
-        Post post = postRepository.findById(id).orElseThrow();
-
-        post.setTitle(title);
-
-        return postRepository.getPostDTOById(id);
-    }
-
-    private org.hibernate.engine.spi.PersistenceContext getHibernatePersistenceContext() {
-        SharedSessionContractImplementor session = entityManager.unwrap(
-            SharedSessionContractImplementor.class
-        );
-        return session.getPersistenceContext();
-    }
+  private org.hibernate.engine.spi.PersistenceContext getHibernatePersistenceContext() {
+    SharedSessionContractImplementor session =
+        entityManager.unwrap(SharedSessionContractImplementor.class);
+    return session.getPersistenceContext();
+  }
 }

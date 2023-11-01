@@ -7,18 +7,16 @@ import com.vladmihalcea.hpjp.util.EntityProvider;
  */
 public abstract class PostEntityProvider<T> implements EntityProvider {
 
-    private final Class<T> clazz;
+  private final Class<T> clazz;
 
-    protected PostEntityProvider(Class<T> clazz) {
-        this.clazz = clazz;
-    }
+  protected PostEntityProvider(Class<T> clazz) {
+    this.clazz = clazz;
+  }
 
-    public abstract T newPost();
+  public abstract T newPost();
 
-    @Override
-    public Class<?>[] entities() {
-        return new Class<?>[] {
-            clazz
-        };
-    }
+  @Override
+  public Class<?>[] entities() {
+    return new Class<?>[] {clazz};
+  }
 }

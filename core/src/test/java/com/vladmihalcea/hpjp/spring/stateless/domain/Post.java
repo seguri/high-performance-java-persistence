@@ -9,16 +9,16 @@ import jakarta.persistence.*;
 @Table(name = "post")
 public class Post extends AbstractPost<Post> {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public Post setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public Post setId(Long id) {
+    this.id = id;
+    return this;
+  }
 }

@@ -1,70 +1,68 @@
 package com.vladmihalcea.hpjp.hibernate.flushing;
 
 import com.vladmihalcea.hpjp.util.AbstractTest;
+import jakarta.persistence.*;
 import org.hibernate.Session;
 import org.junit.Test;
-
-import jakarta.persistence.*;
 
 /**
  * @author Vlad Mihalcea
  */
 public class HibernateDeleteEntityTest extends AbstractTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[] {
-            Post.class
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Post.class};
+  }
 
-    @Override
-    protected boolean nativeHibernateSessionFactoryBootstrap() {
-        return true;
-    }
+  @Override
+  protected boolean nativeHibernateSessionFactoryBootstrap() {
+    return true;
+  }
 
-    @Test
-    public void test() {
+  @Test
+  public void test() {
 
-        doInJPA(entityManager -> {
-            Post post = new Post();
-            post.setId(1L);
-            post.setTitle("High-Performance Java Persistence");
+    doInJPA(
+        entityManager -> {
+          Post post = new Post();
+          post.setId(1L);
+          post.setTitle("High-Performance Java Persistence");
 
-            entityManager.persist(post);
+          entityManager.persist(post);
         });
 
-        doInJPA(entityManager -> {
-            Post post = new Post();
-            post.setId(1L);
+    doInJPA(
+        entityManager -> {
+          Post post = new Post();
+          post.setId(1L);
 
-            entityManager.unwrap(Session.class).delete(post);
+          entityManager.unwrap(Session.class).delete(post);
         });
+  }
+
+  @Entity(name = "Post")
+  @Table(name = "post")
+  public static class Post {
+
+    @Id private Long id;
+
+    private String title;
+
+    public Long getId() {
+      return id;
     }
 
-    @Entity(name = "Post")
-    @Table(name = "post")
-    public static class Post {
-
-        @Id
-        private Long id;
-
-        private String title;
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
+    public void setId(Long id) {
+      this.id = id;
     }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public void setTitle(String title) {
+      this.title = title;
+    }
+  }
 }

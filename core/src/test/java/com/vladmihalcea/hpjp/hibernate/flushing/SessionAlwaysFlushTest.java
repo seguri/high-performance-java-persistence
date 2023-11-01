@@ -1,69 +1,71 @@
 package com.vladmihalcea.hpjp.hibernate.flushing;
 
+import static org.junit.Assert.assertEquals;
+
 import com.vladmihalcea.hpjp.util.AbstractPostgreSQLIntegrationTest;
 import jakarta.persistence.*;
+import java.util.List;
 import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.transform.Transformers;
 import org.jboss.logging.Logger;
 import org.junit.Test;
 
-import java.math.BigInteger;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-
 /**
  * @author Vlad Mihalcea
  */
 public class SessionAlwaysFlushTest extends AbstractPostgreSQLIntegrationTest {
 
-    private static final Logger log = Logger.getLogger(AlwaysFlushTest.class);
+  private static final Logger log = Logger.getLogger(AlwaysFlushTest.class);
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class[]{
-            Board.class,
-            Post.class,
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class[] {
+      Board.class, Post.class,
+    };
+  }
 
-    @Override
-    protected boolean nativeHibernateSessionFactoryBootstrap() {
-        return true;
-    }
+  @Override
+  protected boolean nativeHibernateSessionFactoryBootstrap() {
+    return true;
+  }
 
-    @Test
-    public void testFlushSQL() {
-        doInJPA(entityManager -> {
-            entityManager.createNativeQuery("delete from Post").executeUpdate();
-            entityManager.createNativeQuery("delete from Board").executeUpdate();
+  @Test
+  public void testFlushSQL() {
+    doInJPA(
+        entityManager -> {
+          entityManager.createNativeQuery("delete from Post").executeUpdate();
+          entityManager.createNativeQuery("delete from Board").executeUpdate();
         });
-        doInJPA(entityManager -> {
-            log.info("testFlushSQL");
+    doInJPA(
+        entityManager -> {
+          log.info("testFlushSQL");
 
-            Board board1 = new Board();
-            board1.setName("JPA");
-            Board board2 = new Board();
-            board2.setName("Hibernate");
+          Board board1 = new Board();
+          board1.setName("JPA");
+          Board board2 = new Board();
+          board2.setName("Hibernate");
 
-            entityManager.persist(board1);
-            entityManager.persist(board2);
+          entityManager.persist(board1);
+          entityManager.persist(board2);
 
-            Post post1 = new Post("JPA 1");
-            post1.setBoard(board1);
-            entityManager.persist(post1);
+          Post post1 = new Post("JPA 1");
+          post1.setBoard(board1);
+          entityManager.persist(post1);
 
-            Post post2 = new Post("Hibernate 1");
-            post2.setBoard(board2);
-            entityManager.persist(post2);
+          Post post2 = new Post("Hibernate 1");
+          post2.setBoard(board2);
+          entityManager.persist(post2);
 
-            Post post3 = new Post("Hibernate 3");
-            post3.setBoard(board2);
-            entityManager.persist(post3);
+          Post post3 = new Post("Hibernate 3");
+          post3.setBoard(board2);
+          entityManager.persist(post3);
 
-            Session session = entityManager.unwrap(Session.class);
-            List<ForumCount> result = session.createNativeQuery("""
+          Session session = entityManager.unwrap(Session.class);
+          List<ForumCount> result =
+              session
+                  .createNativeQuery(
+                      """
                 SELECT
                    b.name as forum,
                    COUNT (p) as count
@@ -71,44 +73,49 @@ public class SessionAlwaysFlushTest extends AbstractPostgreSQLIntegrationTest {
                 JOIN board b on b.id = p.board_id
                 GROUP BY forum
                 """)
-                .setHibernateFlushMode(FlushMode.ALWAYS)
-                .setResultTransformer(Transformers.aliasToBean(ForumCount.class))
-                .list();
+                  .setHibernateFlushMode(FlushMode.ALWAYS)
+                  .setResultTransformer(Transformers.aliasToBean(ForumCount.class))
+                  .list();
 
-            assertEquals(result.size(), 2);
+          assertEquals(result.size(), 2);
         });
-    }
+  }
 
-    @Test
-    public void testSynchronizeSQL() {
-        doInHibernate(session -> {
-            session.createNativeQuery("delete from Post").executeUpdate();
-            session.createNativeQuery("delete from Board").executeUpdate();
+  @Test
+  public void testSynchronizeSQL() {
+    doInHibernate(
+        session -> {
+          session.createNativeQuery("delete from Post").executeUpdate();
+          session.createNativeQuery("delete from Board").executeUpdate();
         });
-        doInHibernate(session -> {
-            log.info("testFlushSQL");
+    doInHibernate(
+        session -> {
+          log.info("testFlushSQL");
 
-            Board board1 = new Board();
-            board1.setName("JPA");
-            Board board2 = new Board();
-            board2.setName("Hibernate");
+          Board board1 = new Board();
+          board1.setName("JPA");
+          Board board2 = new Board();
+          board2.setName("Hibernate");
 
-            session.persist(board1);
-            session.persist(board2);
+          session.persist(board1);
+          session.persist(board2);
 
-            Post post1 = new Post("JPA 1");
-            post1.setBoard(board1);
-            session.persist(post1);
+          Post post1 = new Post("JPA 1");
+          post1.setBoard(board1);
+          session.persist(post1);
 
-            Post post2 = new Post("Hibernate 1");
-            post2.setBoard(board2);
-            session.persist(post2);
+          Post post2 = new Post("Hibernate 1");
+          post2.setBoard(board2);
+          session.persist(post2);
 
-            Post post3 = new Post("Hibernate 3");
-            post3.setBoard(board2);
-            session.persist(post3);
+          Post post3 = new Post("Hibernate 3");
+          post3.setBoard(board2);
+          session.persist(post3);
 
-            List<ForumCount> result = session.createNativeQuery("""
+          List<ForumCount> result =
+              session
+                  .createNativeQuery(
+                      """
                 SELECT
                    b.name as forum,
                    COUNT (p) as count
@@ -116,114 +123,107 @@ public class SessionAlwaysFlushTest extends AbstractPostgreSQLIntegrationTest {
                 JOIN board b on b.id = p.board_id
                 GROUP BY forum
                 """)
-                .addSynchronizedEntityClass(Board.class)
-                .addSynchronizedEntityClass(Post.class)
-                .setResultTransformer(Transformers.aliasToBean(ForumCount.class))
-                .list();
+                  .addSynchronizedEntityClass(Board.class)
+                  .addSynchronizedEntityClass(Post.class)
+                  .setResultTransformer(Transformers.aliasToBean(ForumCount.class))
+                  .list();
 
-            assertEquals(result.size(), 2);
+          assertEquals(result.size(), 2);
         });
+  }
+
+  public static class ForumCount {
+
+    private String forum;
+
+    private Long count;
+
+    public String getForum() {
+      return forum;
     }
 
-    public static class ForumCount {
-
-        private String forum;
-
-        private Long count;
-
-        public String getForum() {
-            return forum;
-        }
-
-        public void setForum(String forum) {
-            this.forum = forum;
-        }
-
-        public Long getCount() {
-            return count;
-        }
-
-        public void setCount(Number count) {
-            this.count = count.longValue();
-        }
+    public void setForum(String forum) {
+      this.forum = forum;
     }
 
-    @Entity(name = "Board")
-    @Table(name = "board")
-    public static class Board {
-
-        @Id
-        @GeneratedValue
-        private Long id;
-
-        private String name;
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
+    public Long getCount() {
+      return count;
     }
 
-    @Entity(name = "Post")
-    @Table(name = "post")
-    public static class Post {
-
-        @Id
-        @GeneratedValue
-        private Long id;
-
-        private String title;
-
-        @ManyToOne
-        private Board board;
-
-        @Version
-        private short version;
-
-        public Post() {
-        }
-
-        public Post(String title) {
-            this.title = title;
-        }
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public Board getBoard() {
-            return board;
-        }
-
-        public void setBoard(Board board) {
-            this.board = board;
-        }
-
-        public int getVersion() {
-            return version;
-        }
+    public void setCount(Number count) {
+      this.count = count.longValue();
     }
+  }
+
+  @Entity(name = "Board")
+  @Table(name = "board")
+  public static class Board {
+
+    @Id @GeneratedValue private Long id;
+
+    private String name;
+
+    public Long getId() {
+      return id;
+    }
+
+    public void setId(Long id) {
+      this.id = id;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+  }
+
+  @Entity(name = "Post")
+  @Table(name = "post")
+  public static class Post {
+
+    @Id @GeneratedValue private Long id;
+
+    private String title;
+
+    @ManyToOne private Board board;
+
+    @Version private short version;
+
+    public Post() {}
+
+    public Post(String title) {
+      this.title = title;
+    }
+
+    public Long getId() {
+      return id;
+    }
+
+    public void setId(Long id) {
+      this.id = id;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public void setTitle(String title) {
+      this.title = title;
+    }
+
+    public Board getBoard() {
+      return board;
+    }
+
+    public void setBoard(Board board) {
+      this.board = board;
+    }
+
+    public int getVersion() {
+      return version;
+    }
+  }
 }

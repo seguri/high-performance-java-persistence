@@ -7,7 +7,7 @@ import com.vladmihalcea.hpjp.hibernate.inheritance.spring.model.Subscriber;
  */
 public interface CampaignSender<S extends Subscriber> {
 
-    Class<S> appliesTo();
+  Class<S> appliesTo();
 
-    void send(String title, String message, S subscriber);
+  void send(String title, String message, S subscriber);
 }

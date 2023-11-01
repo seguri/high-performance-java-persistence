@@ -5,10 +5,10 @@ package com.vladmihalcea.hpjp.util.providers.queries;
  */
 public class HSQLDBServerQueries implements Queries {
 
-    public static final Queries INSTANCE = new HSQLDBServerQueries();
+  public static final Queries INSTANCE = new HSQLDBServerQueries();
 
-    @Override
-    public String transactionId() {
-        return "VALUES (TRANSACTION_ID())";
-    }
+  @Override
+  public String transactionId() {
+    return "VALUES (TRANSACTION_ID())";
+  }
 }

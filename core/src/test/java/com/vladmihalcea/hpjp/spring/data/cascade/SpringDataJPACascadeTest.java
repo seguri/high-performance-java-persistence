@@ -1,5 +1,7 @@
 package com.vladmihalcea.hpjp.spring.data.cascade;
 
+import static org.junit.Assert.assertEquals;
+
 import com.vladmihalcea.hpjp.spring.data.cascade.config.SpringDataJPACascadeConfiguration;
 import com.vladmihalcea.hpjp.spring.data.cascade.domain.Post;
 import com.vladmihalcea.hpjp.spring.data.cascade.domain.PostComment;
@@ -12,6 +14,9 @@ import com.vladmihalcea.hpjp.spring.data.cascade.repository.TagRepository;
 import com.vladmihalcea.hpjp.spring.data.cascade.service.ForumService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import org.hibernate.Session;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -25,12 +30,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -39,295 +38,299 @@ import static org.junit.Assert.assertEquals;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringDataJPACascadeTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private ForumService forumService;
+  @Autowired private ForumService forumService;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Autowired
-    private TagRepository tagRepository;
+  @Autowired private TagRepository tagRepository;
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private PostCommentRepository postCommentRepository;
+  @Autowired private PostCommentRepository postCommentRepository;
 
-    @Autowired
-    private PostDetailsRepository postDetailsRepository;
+  @Autowired private PostDetailsRepository postDetailsRepository;
 
-    @Test
-    public void testSavePostAndComments() {
-        postRepository.persist(
-            new Post()
-                .setId(1L)
-                .setTitle("High-Performance Java Persistence")
-                .addComment(
-                    new PostComment()
-                        .setReview("Best book on JPA and Hibernate!")
-                )
-                .addComment(
-                    new PostComment()
-                        .setReview("A must-read for every Java developer!")
-                )
-        );
-
-        transactionTemplate.execute(transactionStatus -> {
-            Post post = postRepository.findByIdWithComments(1L);
-            postRepository.delete(post);
-
-            return null;
-        });
-    }
-
-    @Test
-    public void testSaveAndRemoveChildEntityWithoutCascading() {
-        postRepository.persist(
-            new Post()
-                .setId(1L)
-                .setTitle("High-Performance Java Persistence")
-        );
-
-        PostComment comment = forumService.addPostComment("Best book on JPA and Hibernate!", 1L);
-        forumService.removePostComment(comment.getId());
-    }
-
-    @Test
-    public void testSavePostWithDetailsAndComments() {
-        Post post = new Post()
+  @Test
+  public void testSavePostAndComments() {
+    postRepository.persist(
+        new Post()
             .setId(1L)
             .setTitle("High-Performance Java Persistence")
-            .setDetails(
-                new PostDetails()
-                    .setCreatedBy("Vlad Mihalcea")
-            )
-            .addComment(
-                new PostComment()
-                    .setReview("Best book on JPA and Hibernate!")
-            )
-            .addComment(
-                new PostComment()
-                    .setReview("A must-read for every Java developer!")
-            );
+            .addComment(new PostComment().setReview("Best book on JPA and Hibernate!"))
+            .addComment(new PostComment().setReview("A must-read for every Java developer!")));
 
-        List<Long> postCommentIds = transactionTemplate.execute(transactionStatus -> {
-            postRepository.persist(post);
-            return post.getComments().stream().map(PostComment::getId).toList();
+    transactionTemplate.execute(
+        transactionStatus -> {
+          Post post = postRepository.findByIdWithComments(1L);
+          postRepository.delete(post);
+
+          return null;
         });
+  }
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Long minId = Collections.min(postCommentIds);
-            Long maxId = Collections.max(postCommentIds);
+  @Test
+  public void testSaveAndRemoveChildEntityWithoutCascading() {
+    postRepository.persist(new Post().setId(1L).setTitle("High-Performance Java Persistence"));
 
-            List<PostComment> postComments = postCommentRepository.findAllWithPostAndDetailsByIds(
-                minId,
-                maxId
-            );
+    PostComment comment = forumService.addPostComment("Best book on JPA and Hibernate!", 1L);
+    forumService.removePostComment(comment.getId());
+  }
 
-            assertEquals(postCommentIds.size(), postComments.size());
-            return null;
-        });
-    }
+  @Test
+  public void testSavePostWithDetailsAndComments() {
+    Post post =
+        new Post()
+            .setId(1L)
+            .setTitle("High-Performance Java Persistence")
+            .setDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"))
+            .addComment(new PostComment().setReview("Best book on JPA and Hibernate!"))
+            .addComment(new PostComment().setReview("A must-read for every Java developer!"));
 
-    @Test
-    public void testSavePostAndPostDetails() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Post post = new Post()
-                .setId(1L)
-                .setTitle("High-Performance Java Persistence")
-                .setDetails(
-                    new PostDetails()
-                        .setCreatedBy("Vlad Mihalcea")
-                );
+    List<Long> postCommentIds =
+        transactionTemplate.execute(
+            transactionStatus -> {
+              postRepository.persist(post);
+              return post.getComments().stream().map(PostComment::getId).toList();
+            });
 
-            postRepository.persist(post);
-            return null;
-        });
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Long minId = Collections.min(postCommentIds);
+              Long maxId = Collections.max(postCommentIds);
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Post post = postRepository.getReferenceById(1L);
+              List<PostComment> postComments =
+                  postCommentRepository.findAllWithPostAndDetailsByIds(minId, maxId);
 
-            PostDetails postDetails = postDetailsRepository.findById(post.getId()).orElseThrow();
-            assertEquals("Vlad Mihalcea", postDetails.getCreatedBy());
+              assertEquals(postCommentIds.size(), postComments.size());
+              return null;
+            });
+  }
 
-            return null;
-        });
+  @Test
+  public void testSavePostAndPostDetails() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Post post =
+                  new Post()
+                      .setId(1L)
+                      .setTitle("High-Performance Java Persistence")
+                      .setDetails(new PostDetails().setCreatedBy("Vlad Mihalcea"));
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Post post = postRepository.findById(1L).orElseThrow();
+              postRepository.persist(post);
+              return null;
+            });
 
-            return null;
-        });
-    }
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Post post = postRepository.getReferenceById(1L);
 
-    @Test
-    public void testSavePostAndTags() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            tagRepository.persist(new Tag().setName("JPA"));
-            tagRepository.persist(new Tag().setName("Hibernate"));
+              PostDetails postDetails = postDetailsRepository.findById(post.getId()).orElseThrow();
+              assertEquals("Vlad Mihalcea", postDetails.getCreatedBy());
 
-            return null;
-        });
+              return null;
+            });
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Session session = entityManager.unwrap(Session.class);
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Post post = postRepository.findById(1L).orElseThrow();
 
-            postRepository.persist(
-                new Post()
-                    .setId(1L)
-                    .setTitle("JPA with Hibernate")
-                    .addTag(session.bySimpleNaturalId(Tag.class).getReference("JPA"))
-                    .addTag(session.bySimpleNaturalId(Tag.class).getReference("Hibernate"))
-            );
+              return null;
+            });
+  }
 
-            postRepository.persist(
-                new Post()
-                    .setId(2L)
-                    .addTag(session.bySimpleNaturalId(Tag.class).getReference("Hibernate"))
-            );
+  @Test
+  public void testSavePostAndTags() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              tagRepository.persist(new Tag().setName("JPA"));
+              tagRepository.persist(new Tag().setName("Hibernate"));
 
-            return null;
-        });
+              return null;
+            });
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Session session = entityManager.unwrap(Session.class);
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Session session = entityManager.unwrap(Session.class);
 
-            Post post = entityManager.createQuery("""
+              postRepository.persist(
+                  new Post()
+                      .setId(1L)
+                      .setTitle("JPA with Hibernate")
+                      .addTag(session.bySimpleNaturalId(Tag.class).getReference("JPA"))
+                      .addTag(session.bySimpleNaturalId(Tag.class).getReference("Hibernate")));
+
+              postRepository.persist(
+                  new Post()
+                      .setId(2L)
+                      .addTag(session.bySimpleNaturalId(Tag.class).getReference("Hibernate")));
+
+              return null;
+            });
+
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Session session = entityManager.unwrap(Session.class);
+
+              Post post =
+                  entityManager
+                      .createQuery(
+                          """
                 select p
                 from Post p
                 join fetch p.tags
                 where p.id = :id
-                """, Post.class)
-            .setParameter("id", 1L)
-            .getSingleResult();
+                """,
+                          Post.class)
+                      .setParameter("id", 1L)
+                      .getSingleResult();
 
-            post.getTags().remove(session.bySimpleNaturalId(Tag.class).getReference("JPA"));
+              post.getTags().remove(session.bySimpleNaturalId(Tag.class).getReference("JPA"));
 
-            return null;
-        });
-    }
+              return null;
+            });
+  }
 
-    @Test
-    public void testBatchingPersistPostAndComments() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            for (long i = 1; i <= 3; i++) {
+  @Test
+  public void testBatchingPersistPostAndComments() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              for (long i = 1; i <= 3; i++) {
                 postRepository.persist(
                     new Post()
                         .setId(i)
                         .setTitle(String.format("Post no. %d", i))
-                        .addComment(new PostComment().setReview("Good"))
-                );
-            }
-            return null;
-        });
-    }
-
-    @Test
-    public void testBatchingUpdatePost() {
-        testBatchingPersistPostAndComments();
-
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
-
-            posts.forEach(post -> post.setTitle(post.getTitle().replaceAll("no", "nr")));
-            return null;
-        });
-    }
-    
-    @Test
-    public void testBatchingUpdatePostAndComments() {
-        testBatchingPersistPostAndComments();
-
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            List<PostComment> comments = postCommentRepository.findAllWithPostTitleLike("Post no.%");
-
-            comments.forEach(c -> {
-                c.setReview(c.getReview().replaceAll("Good", "Very good"));
-                Post post = c.getPost();
-                post.setTitle(post.getTitle().replaceAll("no", "nr"));
+                        .addComment(new PostComment().setReview("Good")));
+              }
+              return null;
             });
-            return null;
-        });
-    }
+  }
 
-    @Test
-    public void testBatchingDeletePost() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            for (long i = 1; i <= 3; i++) {
+  @Test
+  public void testBatchingUpdatePost() {
+    testBatchingPersistPostAndComments();
+
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
+
+              posts.forEach(post -> post.setTitle(post.getTitle().replaceAll("no", "nr")));
+              return null;
+            });
+  }
+
+  @Test
+  public void testBatchingUpdatePostAndComments() {
+    testBatchingPersistPostAndComments();
+
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              List<PostComment> comments =
+                  postCommentRepository.findAllWithPostTitleLike("Post no.%");
+
+              comments.forEach(
+                  c -> {
+                    c.setReview(c.getReview().replaceAll("Good", "Very good"));
+                    Post post = c.getPost();
+                    post.setTitle(post.getTitle().replaceAll("no", "nr"));
+                  });
+              return null;
+            });
+  }
+
+  @Test
+  public void testBatchingDeletePost() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              for (long i = 1; i <= 3; i++) {
                 postRepository.persist(
-                    new Post()
-                        .setId(i)
-                        .setTitle(String.format("Post no. %d", i))
-                );
-            }
-            return null;
-        });
-
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
-
-            posts.forEach(post -> postRepository.delete(post));
-            return null;
-        });
-    }
-
-    @Test
-    public void testBatchingDeletePostAndComments() {
-        testBatchingPersistPostAndComments();
-
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
-
-            posts.forEach(postRepository::delete);
-            return null;
-        });
-    }
-
-    @Test
-    public void testBatchingDeletePostAndCommentsManualOrdering() {
-        testBatchingPersistPostAndComments();
-
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
-
-            posts.forEach(post -> {
-                Iterator<PostComment> it = post.getComments().iterator();
-                while (it.hasNext()) {
-                    it.next().setPost(null);
-                    it.remove();
-                }
+                    new Post().setId(i).setTitle(String.format("Post no. %d", i)));
+              }
+              return null;
             });
 
-            entityManager.flush();
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
 
-            posts.forEach(postRepository::delete);
+              posts.forEach(post -> postRepository.delete(post));
+              return null;
+            });
+  }
 
-            return null;
-        });
-    }
+  @Test
+  public void testBatchingDeletePostAndComments() {
+    testBatchingPersistPostAndComments();
 
-    @Test
-    @Ignore("""
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
+
+              posts.forEach(postRepository::delete);
+              return null;
+            });
+  }
+
+  @Test
+  public void testBatchingDeletePostAndCommentsManualOrdering() {
+    testBatchingPersistPostAndComments();
+
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
+
+              posts.forEach(
+                  post -> {
+                    Iterator<PostComment> it = post.getComments().iterator();
+                    while (it.hasNext()) {
+                      it.next().setPost(null);
+                      it.remove();
+                    }
+                  });
+
+              entityManager.flush();
+
+              posts.forEach(postRepository::delete);
+
+              return null;
+            });
+  }
+
+  @Test
+  @Ignore(
+      """
         Requires the comments collection to use
         @OneToMany(mappedBy = \"post\", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
         """)
-    public void testBatchingDeletePostAndCommentsBulkDelete() {
-        testBatchingPersistPostAndComments();
+  public void testBatchingDeletePostAndCommentsBulkDelete() {
+    testBatchingPersistPostAndComments();
 
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              List<Post> posts = postRepository.findAllByTitleLike("Post no.%");
 
-            postCommentRepository.deleteAllByPost(posts);
-            posts.forEach(postRepository::delete);
+              postCommentRepository.deleteAllByPost(posts);
+              posts.forEach(postRepository::delete);
 
-            return null;
-        });
-    }
+              return null;
+            });
+  }
 }
-

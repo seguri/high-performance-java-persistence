@@ -9,10 +9,10 @@ import com.vladmihalcea.hpjp.spring.blaze.domain.UserVote;
  */
 @EntityView(UserVote.class)
 public interface UserVoteView {
-    @IdMapping
-    Long getId();
+  @IdMapping
+  Long getId();
 
-    UserView getUser();
+  UserView getUser();
 
-    int getScore();
+  int getScore();
 }

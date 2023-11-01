@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.spring.blaze.domain.Tag;
  */
 @EntityView(Tag.class)
 public interface TagView {
-    @IdMapping
-    Long getId();
+  @IdMapping
+  Long getId();
 
-    String getName();
+  String getName();
 }

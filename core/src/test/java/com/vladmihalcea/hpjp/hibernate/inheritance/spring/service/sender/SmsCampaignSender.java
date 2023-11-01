@@ -11,19 +11,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class SmsCampaignSender implements CampaignSender<SmsSubscriber> {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Override
-    public Class<SmsSubscriber> appliesTo() {
-        return SmsSubscriber.class;
-    }
+  @Override
+  public Class<SmsSubscriber> appliesTo() {
+    return SmsSubscriber.class;
+  }
 
-    @Override
-    public void send(String title, String message, SmsSubscriber subscriber) {
-        LOGGER.info("Send SMS: {} - {} to phone number: {}",
-                title,
-                message,
-                subscriber.getPhoneNumber()
-        );
-    }
+  @Override
+  public void send(String title, String message, SmsSubscriber subscriber) {
+    LOGGER.info(
+        "Send SMS: {} - {} to phone number: {}", title, message, subscriber.getPhoneNumber());
+  }
 }

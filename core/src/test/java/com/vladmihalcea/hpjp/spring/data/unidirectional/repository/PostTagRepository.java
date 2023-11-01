@@ -14,10 +14,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostTagRepository extends BaseJpaRepository<PostTag, PostTagId> {
 
-    @Query("""
+  @Query("""
         delete from PostTag
         where post.id = :postId
         """)
-    @Modifying
-    void deleteAllByPostId(@Param("postId") Long postId);
+  @Modifying
+  void deleteAllByPostId(@Param("postId") Long postId);
 }

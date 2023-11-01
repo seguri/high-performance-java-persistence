@@ -8,8 +8,9 @@ import org.hibernate.type.descriptor.java.ShortJavaType;
  */
 public class ShortVersionType extends ShortJavaType {
 
-    @Override
-    public Short seed(Long length, Integer precision, Integer scale, SharedSessionContractImplementor session) {
-        return Short.MIN_VALUE;
-    }
+  @Override
+  public Short seed(
+      Long length, Integer precision, Integer scale, SharedSessionContractImplementor session) {
+    return Short.MIN_VALUE;
+  }
 }

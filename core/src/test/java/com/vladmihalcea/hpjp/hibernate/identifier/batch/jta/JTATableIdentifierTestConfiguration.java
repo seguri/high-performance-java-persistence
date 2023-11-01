@@ -4,10 +4,11 @@ import com.vladmihalcea.hpjp.util.spring.config.jta.PostgreSQLJTATransactionMana
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class JTATableIdentifierTestConfiguration extends PostgreSQLJTATransactionManagerConfiguration {
+public class JTATableIdentifierTestConfiguration
+    extends PostgreSQLJTATransactionManagerConfiguration {
 
-    @Override
-    protected Class configurationClass() {
-        return Post.class;
-    }
+  @Override
+  protected Class configurationClass() {
+    return Post.class;
+  }
 }

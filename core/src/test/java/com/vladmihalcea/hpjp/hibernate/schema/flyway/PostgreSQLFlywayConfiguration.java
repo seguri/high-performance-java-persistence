@@ -7,5 +7,4 @@ import org.springframework.context.annotation.Configuration;
  * @author Vlad Mihalcea
  */
 @Configuration
-public class PostgreSQLFlywayConfiguration extends AbstractPostgreSQLFlywayConfiguration {
-}
+public class PostgreSQLFlywayConfiguration extends AbstractPostgreSQLFlywayConfiguration {}

@@ -8,5 +8,4 @@ import org.springframework.stereotype.Repository;
  * @author Vlad Mihalcea
  */
 @Repository
-public interface BookRepository extends JpaRepository<Book, Long> {
-}
+public interface BookRepository extends JpaRepository<Book, Long> {}

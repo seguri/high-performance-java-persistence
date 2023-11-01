@@ -9,10 +9,10 @@ import com.vladmihalcea.hpjp.spring.blaze.domain.User;
  */
 @EntityView(User.class)
 public interface UserView {
-    @IdMapping
-    Long getId();
+  @IdMapping
+  Long getId();
 
-    String getFirstName();
+  String getFirstName();
 
-    String getLastName();
+  String getLastName();
 }

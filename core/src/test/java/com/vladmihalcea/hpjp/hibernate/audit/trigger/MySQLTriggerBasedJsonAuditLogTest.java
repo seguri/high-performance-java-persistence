@@ -1,9 +1,14 @@
 package com.vladmihalcea.hpjp.hibernate.audit.trigger;
 
+import static org.junit.Assert.assertEquals;
+
 import com.vladmihalcea.hpjp.util.AbstractTest;
-import com.vladmihalcea.hpjp.util.providers.Database;
 import com.vladmihalcea.hpjp.util.ReflectionUtils;
+import com.vladmihalcea.hpjp.util.providers.Database;
 import io.hypersistence.utils.hibernate.type.json.JsonNodeStringType;
+import jakarta.persistence.*;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.hibernate.Session;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.dialect.Dialect;
@@ -11,39 +16,31 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.usertype.UserType;
 import org.junit.Test;
 
-import jakarta.persistence.*;
-
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertEquals;
-
 /**
  * @author Vlad Mihalcea
  */
 public class MySQLTriggerBasedJsonAuditLogTest extends AbstractTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class[]{
-            Book.class
-        };
-    }
+  @Override
+  protected Class<?>[] entities() {
+    return new Class[] {Book.class};
+  }
 
-    @Override
-    protected Database database() {
-        return Database.MYSQL;
-    }
+  @Override
+  protected Database database() {
+    return Database.MYSQL;
+  }
 
-    @Override
-    protected List<UserType<?>> additionalTypes() {
-        return List.of(JsonNodeStringType.INSTANCE);
-    }
+  @Override
+  protected List<UserType<?>> additionalTypes() {
+    return List.of(JsonNodeStringType.INSTANCE);
+  }
 
-    @Override
-    protected void afterInit() {
-        executeStatement("DROP TABLE IF EXISTS book_audit_log");
-        executeStatement("""
+  @Override
+  protected void afterInit() {
+    executeStatement("DROP TABLE IF EXISTS book_audit_log");
+    executeStatement(
+        """
             CREATE TABLE IF NOT EXISTS book_audit_log (
                 book_id BIGINT NOT NULL,
             	old_row_data JSON,
@@ -54,12 +51,12 @@ public class MySQLTriggerBasedJsonAuditLogTest extends AbstractTest {
             	trx_timestamp timestamp NOT NULL,
             	PRIMARY KEY (book_id, dml_type, dml_timestamp)
             )
-            """
-        );
+            """);
 
-        executeStatement("""          
+    executeStatement(
+        """
             CREATE TRIGGER book_insert_audit_trigger
-            AFTER INSERT ON book FOR EACH ROW 
+            AFTER INSERT ON book FOR EACH ROW
             BEGIN
                 INSERT INTO book_audit_log (
                     book_id,
@@ -85,12 +82,12 @@ public class MySQLTriggerBasedJsonAuditLogTest extends AbstractTest {
                     @transaction_timestamp
                 );
             END
-            """
-        );
+            """);
 
-        executeStatement("""
+    executeStatement(
+        """
             CREATE TRIGGER book_update_audit_trigger
-            AFTER UPDATE ON book FOR EACH ROW 
+            AFTER UPDATE ON book FOR EACH ROW
             BEGIN
                 INSERT INTO book_audit_log (
                     book_id,
@@ -121,12 +118,12 @@ public class MySQLTriggerBasedJsonAuditLogTest extends AbstractTest {
                     @transaction_timestamp
                 );
             END
-            """
-        );
+            """);
 
-        executeStatement("""
+    executeStatement(
+        """
             CREATE TRIGGER book_delete_audit_trigger
-            AFTER DELETE ON book FOR EACH ROW 
+            AFTER DELETE ON book FOR EACH ROW
             BEGIN
                 INSERT INTO book_audit_log (
                     book_id,
@@ -152,67 +149,70 @@ public class MySQLTriggerBasedJsonAuditLogTest extends AbstractTest {
                     @transaction_timestamp
                 );
             END
-            """
-        );
-    }
+            """);
+  }
 
-    @Test
-    public void test() {
-        LoggedUser.logIn("Vlad Mihalcea");
+  @Test
+  public void test() {
+    LoggedUser.logIn("Vlad Mihalcea");
 
-        doInJPA(entityManager -> {
-            setCurrentLoggedUser(entityManager);
+    doInJPA(
+        entityManager -> {
+          setCurrentLoggedUser(entityManager);
 
-            entityManager.persist(
-                new Book()
-                    .setId(1L)
-                    .setTitle("High-Performance Java Persistence 1st edition")
-                    .setPublisher("Amazon")
-                    .setPriceInCents(3990)
-                    .setAuthor("Vlad Mihalcea")
-            );
+          entityManager.persist(
+              new Book()
+                  .setId(1L)
+                  .setTitle("High-Performance Java Persistence 1st edition")
+                  .setPublisher("Amazon")
+                  .setPriceInCents(3990)
+                  .setAuthor("Vlad Mihalcea"));
 
-            sleep(TimeUnit.SECONDS.toMillis(1));
+          sleep(TimeUnit.SECONDS.toMillis(1));
         });
 
-        doInJPA(entityManager -> {
-            List<Tuple> revisions = getPostRevisions(entityManager);
+    doInJPA(
+        entityManager -> {
+          List<Tuple> revisions = getPostRevisions(entityManager);
 
-            assertEquals(1, revisions.size());
-
+          assertEquals(1, revisions.size());
         });
 
-        doInJPA(entityManager -> {
-            setCurrentLoggedUser(entityManager);
+    doInJPA(
+        entityManager -> {
+          setCurrentLoggedUser(entityManager);
 
-            Book book = entityManager.find(Book.class, 1L)
-                .setPriceInCents(4499);
+          Book book = entityManager.find(Book.class, 1L).setPriceInCents(4499);
 
-            sleep(TimeUnit.SECONDS.toMillis(1));
+          sleep(TimeUnit.SECONDS.toMillis(1));
         });
 
-        doInJPA(entityManager -> {
-            List<Tuple> revisions = getPostRevisions(entityManager);
+    doInJPA(
+        entityManager -> {
+          List<Tuple> revisions = getPostRevisions(entityManager);
 
-            assertEquals(2, revisions.size());
+          assertEquals(2, revisions.size());
         });
 
-        doInJPA(entityManager -> {
-            setCurrentLoggedUser(entityManager);
+    doInJPA(
+        entityManager -> {
+          setCurrentLoggedUser(entityManager);
 
-            entityManager.remove(
-                entityManager.getReference(Book.class, 1L)
-            );
+          entityManager.remove(entityManager.getReference(Book.class, 1L));
 
-            sleep(TimeUnit.SECONDS.toMillis(1));
+          sleep(TimeUnit.SECONDS.toMillis(1));
         });
 
-        doInJPA(entityManager -> {
-            List<Tuple> revisions = getPostRevisions(entityManager);
+    doInJPA(
+        entityManager -> {
+          List<Tuple> revisions = getPostRevisions(entityManager);
 
-            assertEquals(3, revisions.size());
+          assertEquals(3, revisions.size());
 
-            List<Tuple> bookRevisions = entityManager.createNativeQuery("""
+          List<Tuple> bookRevisions =
+              entityManager
+                  .createNativeQuery(
+                      """
                 SELECT
                    book_audit_log.dml_timestamp as version_timestamp,
                    r.*
@@ -232,124 +232,121 @@ public class MySQLTriggerBasedJsonAuditLogTest extends AbstractTest {
                 WHERE
                     book_audit_log.book_id = :bookId
                 ORDER BY version_timestamp
-			    """, Tuple.class)
-            .setParameter("bookId", 1L)
-            .getResultList();
+			    """,
+                      Tuple.class)
+                  .setParameter("bookId", 1L)
+                  .getResultList();
 
-            assertEquals(3, bookRevisions.size());
+          assertEquals(3, bookRevisions.size());
         });
-    }
+  }
 
-    private void setCurrentLoggedUser(EntityManager entityManager) {
-        Session session = entityManager.unwrap(Session.class);
-        Dialect dialect = session.getSessionFactory().unwrap(SessionFactoryImplementor.class).getJdbcServices().getDialect();
-        String loggedUser = ReflectionUtils.invokeMethod(
-            dialect,
-            "inlineLiteral",
-            LoggedUser.get()
-        );
+  private void setCurrentLoggedUser(EntityManager entityManager) {
+    Session session = entityManager.unwrap(Session.class);
+    Dialect dialect =
+        session
+            .getSessionFactory()
+            .unwrap(SessionFactoryImplementor.class)
+            .getJdbcServices()
+            .getDialect();
+    String loggedUser = ReflectionUtils.invokeMethod(dialect, "inlineLiteral", LoggedUser.get());
 
-        session.doWork(connection -> {
-            update(
-                connection,
-                "SET @transaction_timestamp = CURRENT_TIMESTAMP"
-            );
+    session.doWork(
+        connection -> {
+          update(connection, "SET @transaction_timestamp = CURRENT_TIMESTAMP");
 
-            update(
-                connection,
-                String.format(
-                    "SET @logged_user = %s", loggedUser
-                )
-            );
+          update(connection, String.format("SET @logged_user = %s", loggedUser));
         });
-    }
+  }
 
-    private List<Tuple> getPostRevisions(EntityManager entityManager) {
-        return entityManager.createNativeQuery("""
+  private List<Tuple> getPostRevisions(EntityManager entityManager) {
+    return entityManager
+        .createNativeQuery(
+            """
             SELECT *
             FROM book_audit_log
-            ORDER BY dml_timestamp 
-            """, Tuple.class)
+            ORDER BY dml_timestamp
+            """,
+            Tuple.class)
         .getResultList();
+  }
+
+  public static class LoggedUser {
+
+    private static final ThreadLocal<String> userHolder = new ThreadLocal<>();
+
+    public static void logIn(String user) {
+      userHolder.set(user);
     }
 
-    public static class LoggedUser {
-
-        private static final ThreadLocal<String> userHolder = new ThreadLocal<>();
-
-        public static void logIn(String user) {
-            userHolder.set(user);
-        }
-
-        public static void logOut() {
-            userHolder.remove();
-        }
-
-        public static String get() {
-            return userHolder.get();
-        }
+    public static void logOut() {
+      userHolder.remove();
     }
 
-    @Entity(name = "Book")
-    @Table(name = "book")
-    @DynamicUpdate
-    public static class Book {
-
-        @Id
-        private Long id;
-
-        private String title;
-
-        private String author;
-
-        @Column(name = "price_in_cents")
-        private int priceInCents;
-
-        private String publisher;
-
-        public Long getId() {
-            return id;
-        }
-
-        public Book setId(Long id) {
-            this.id = id;
-            return this;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public Book setTitle(String title) {
-            this.title = title;
-            return this;
-        }
-
-        public String getAuthor() {
-            return author;
-        }
-
-        public Book setAuthor(String author) {
-            this.author = author;
-            return this;
-        }
-
-        public int getPriceInCents() {
-            return priceInCents;
-        }
-
-        public Book setPriceInCents(int priceInCents) {
-            this.priceInCents = priceInCents;
-            return this;
-        }
-
-        public String getPublisher() {
-            return publisher;
-        }
-
-        public Book setPublisher(String publisher) {
-            this.publisher = publisher;
-            return this;
-        }
+    public static String get() {
+      return userHolder.get();
     }
+  }
+
+  @Entity(name = "Book")
+  @Table(name = "book")
+  @DynamicUpdate
+  public static class Book {
+
+    @Id private Long id;
+
+    private String title;
+
+    private String author;
+
+    @Column(name = "price_in_cents")
+    private int priceInCents;
+
+    private String publisher;
+
+    public Long getId() {
+      return id;
+    }
+
+    public Book setId(Long id) {
+      this.id = id;
+      return this;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public Book setTitle(String title) {
+      this.title = title;
+      return this;
+    }
+
+    public String getAuthor() {
+      return author;
+    }
+
+    public Book setAuthor(String author) {
+      this.author = author;
+      return this;
+    }
+
+    public int getPriceInCents() {
+      return priceInCents;
+    }
+
+    public Book setPriceInCents(int priceInCents) {
+      this.priceInCents = priceInCents;
+      return this;
+    }
+
+    public String getPublisher() {
+      return publisher;
+    }
+
+    public Book setPublisher(String publisher) {
+      this.publisher = publisher;
+      return this;
+    }
+  }
 }

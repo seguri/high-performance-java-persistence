@@ -11,26 +11,25 @@ import jakarta.persistence.Table;
 @Table(name = "tag")
 public class Tag {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    private String name;
+  private String name;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public Tag setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public Tag setId(Long id) {
+    this.id = id;
+    return this;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public Tag setName(String name) {
-        this.name = name;
-        return this;
-    }
+  public Tag setName(String name) {
+    this.name = name;
+    return this;
+  }
 }

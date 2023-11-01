@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.spring.blaze.domain.Post;
  */
 @EntityView(Post.class)
 public interface PostView {
-    @IdMapping
-    Long getId();
+  @IdMapping
+  Long getId();
 
-    String getTitle();
+  String getTitle();
 }

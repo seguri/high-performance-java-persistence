@@ -5,5 +5,5 @@ package com.vladmihalcea.hpjp.hibernate.audit.hibernate.model;
  */
 public interface Auditable<I> {
 
-    I getId();
+  I getId();
 }

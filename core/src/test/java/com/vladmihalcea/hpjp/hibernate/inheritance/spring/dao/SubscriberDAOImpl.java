@@ -7,11 +7,9 @@ import org.springframework.stereotype.Repository;
  * @author Vlad Mihalcea
  */
 @Repository
-public class SubscriberDAOImpl
-        extends GenericDAOImpl<Subscriber, Long>
-        implements SubscriberDAO {
+public class SubscriberDAOImpl extends GenericDAOImpl<Subscriber, Long> implements SubscriberDAO {
 
-    protected SubscriberDAOImpl() {
-        super(Subscriber.class);
-    }
+  protected SubscriberDAOImpl() {
+    super(Subscriber.class);
+  }
 }

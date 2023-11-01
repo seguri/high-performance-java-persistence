@@ -12,12 +12,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostRepository extends BaseJpaRepository<Post, Long> {
 
-    @Query("""
+  @Query(
+      """
         select p
         from Post p
         join fetch p.details
         join fetch p.comments
         where p.id = :id
         """)
-    Post findByIdWithDetailsAndComments(@Param("id") Long id);
+  Post findByIdWithDetailsAndComments(@Param("id") Long id);
 }

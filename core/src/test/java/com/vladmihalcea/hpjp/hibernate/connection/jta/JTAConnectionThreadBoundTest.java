@@ -1,5 +1,9 @@
 package com.vladmihalcea.hpjp.hibernate.connection.jta;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.sql.Connection;
+import javax.sql.DataSource;
 import org.hibernate.Session;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -12,39 +16,36 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import javax.sql.DataSource;
-import java.sql.Connection;
-
-import static org.junit.Assert.assertNotNull;
-
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = JTAConnectionReleaseConfiguration.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class JTAConnectionThreadBoundTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private DataSource dataSource;
+  @Autowired private DataSource dataSource;
 
-    @Test
-    public void test() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            entityManager.unwrap(Session.class).doWork(connection -> {
-                try(Connection anotherConnection = dataSource.getConnection()) {
-                    LOGGER.info("Connections got from JTA transactions are{} bound to thread", connection == anotherConnection ? "" : " not");
-                }
+  @Test
+  public void test() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              entityManager
+                  .unwrap(Session.class)
+                  .doWork(
+                      connection -> {
+                        try (Connection anotherConnection = dataSource.getConnection()) {
+                          LOGGER.info(
+                              "Connections got from JTA transactions are{} bound to thread",
+                              connection == anotherConnection ? "" : " not");
+                        }
+                      });
+
+              return null;
             });
-
-            return null;
-        });
-    }
+  }
 }

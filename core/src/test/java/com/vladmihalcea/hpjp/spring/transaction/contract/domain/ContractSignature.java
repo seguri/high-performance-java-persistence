@@ -12,22 +12,22 @@ import org.hibernate.annotations.OnDeleteAction;
 public class ContractSignature extends BaseSignature<ContractSignature>
     implements RootAware<Contract> {
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    private Contract contract;
+  @OneToOne(fetch = FetchType.LAZY)
+  @MapsId
+  @OnDelete(action = OnDeleteAction.CASCADE)
+  private Contract contract;
 
-    public Contract getContract() {
-        return contract;
-    }
+  public Contract getContract() {
+    return contract;
+  }
 
-    public ContractSignature setContract(Contract contract) {
-        this.contract = contract;
-        return this;
-    }
+  public ContractSignature setContract(Contract contract) {
+    this.contract = contract;
+    return this;
+  }
 
-    @Override
-    public Contract root() {
-        return contract;
-    }
+  @Override
+  public Contract root() {
+    return contract;
+  }
 }

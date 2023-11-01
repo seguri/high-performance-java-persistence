@@ -5,5 +5,5 @@ package com.vladmihalcea.hpjp.spring.transaction.jpa.repository;
  */
 public interface CustomPostRepository {
 
-    void savePosts();
+  void savePosts();
 }

@@ -1,31 +1,35 @@
 package com.vladmihalcea.hpjp.hibernate.query.recursive.complex;
 
 import com.vladmihalcea.hpjp.hibernate.query.recursive.PostCommentScore;
-import org.hibernate.query.NativeQuery;
-import org.hibernate.transform.ResultTransformer;
-import org.junit.Ignore;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.transform.ResultTransformer;
+import org.junit.Ignore;
 
 /**
  * @author Vlad Mihalcea
  */
 @Ignore
-public class PostCommentScoreRecursiveCTEPerformanceTest extends AbstractPostCommentScorePerformanceTest {
+public class PostCommentScoreRecursiveCTEPerformanceTest
+    extends AbstractPostCommentScorePerformanceTest {
 
-    public PostCommentScoreRecursiveCTEPerformanceTest(int postCount, int commentCount) {
-        super(postCount, commentCount);
-    }
+  public PostCommentScoreRecursiveCTEPerformanceTest(int postCount, int commentCount) {
+    super(postCount, commentCount);
+  }
 
-    @Override
-    protected List<PostCommentScore> postCommentScores(Long postId, int rank) {
-        return doInJPA(entityManager -> {
-            long startNanos = System.nanoTime();
-            List<PostCommentScore> postCommentScores = entityManager.createNativeQuery("""
+  @Override
+  protected List<PostCommentScore> postCommentScores(Long postId, int rank) {
+    return doInJPA(
+        entityManager -> {
+          long startNanos = System.nanoTime();
+          List<PostCommentScore> postCommentScores =
+              entityManager
+                  .createNativeQuery(
+                      """
                     SELECT id, parent_id, root_id, review, created_on, score
                     FROM (
                         SELECT
@@ -37,8 +41,8 @@ public class PostCommentScoreRecursiveCTEPerformanceTest extends AbstractPostCom
                                 SUM(score) OVER (
                                     PARTITION BY root_id
                                 ) total_score
-                            FROM (          
-                                WITH RECURSIVE post_comment_score(id, root_id, post_id, parent_id, review, created_on, user_id, score) AS (              
+                            FROM (
+                                WITH RECURSIVE post_comment_score(id, root_id, post_id, parent_id, review, created_on, user_id, score) AS (
                                     SELECT id, id, post_id, parent_id, review, created_on, user_id,
                                       CASE WHEN up IS NULL THEN 0 WHEN up = true THEN 1 ELSE - 1 END score
                                   FROM post_comment
@@ -57,40 +61,42 @@ public class PostCommentScoreRecursiveCTEPerformanceTest extends AbstractPostCom
                         ) score_total
                         ORDER BY total_score DESC, created_on ASC
                     ) total_score_group
-                    WHERE rank <= :rank""", "PostCommentScore")
-            .unwrap(NativeQuery.class)
-            .setParameter("postId", postId).setParameter("rank", rank)
-            .setResultTransformer(new PostCommentScoreResultTransformer())
-            .list();
-            timer.update(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
-            return postCommentScores;
+                    WHERE rank <= :rank""",
+                      "PostCommentScore")
+                  .unwrap(NativeQuery.class)
+                  .setParameter("postId", postId)
+                  .setParameter("rank", rank)
+                  .setResultTransformer(new PostCommentScoreResultTransformer())
+                  .list();
+          timer.update(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+          return postCommentScores;
         });
+  }
+
+  public static class PostCommentScoreResultTransformer implements ResultTransformer {
+
+    private Map<Long, PostCommentScore> postCommentScoreMap = new HashMap<>();
+
+    private List<PostCommentScore> roots = new ArrayList<>();
+
+    @Override
+    public Object transformTuple(Object[] tuple, String[] aliases) {
+      PostCommentScore postCommentScore = (PostCommentScore) tuple[0];
+      if (postCommentScore.getParentId() == null) {
+        roots.add(postCommentScore);
+      } else {
+        PostCommentScore parent = postCommentScoreMap.get(postCommentScore.getParentId());
+        if (parent != null) {
+          parent.addChild(postCommentScore);
+        }
+      }
+      postCommentScoreMap.putIfAbsent(postCommentScore.getId(), postCommentScore);
+      return postCommentScore;
     }
 
-    public static class PostCommentScoreResultTransformer implements ResultTransformer {
-
-        private Map<Long, PostCommentScore> postCommentScoreMap = new HashMap<>();
-
-        private List<PostCommentScore> roots = new ArrayList<>();
-
-        @Override
-        public Object transformTuple(Object[] tuple, String[] aliases) {
-            PostCommentScore postCommentScore = (PostCommentScore) tuple[0];
-            if(postCommentScore.getParentId() == null) {
-                roots.add(postCommentScore);
-            } else {
-                PostCommentScore parent = postCommentScoreMap.get(postCommentScore.getParentId());
-                if(parent != null) {
-                    parent.addChild(postCommentScore);
-                }
-            }
-            postCommentScoreMap.putIfAbsent(postCommentScore.getId(), postCommentScore);
-            return postCommentScore;
-        }
-
-        @Override
-        public List transformList(List collection) {
-            return roots;
-        }
+    @Override
+    public List transformList(List collection) {
+      return roots;
     }
+  }
 }

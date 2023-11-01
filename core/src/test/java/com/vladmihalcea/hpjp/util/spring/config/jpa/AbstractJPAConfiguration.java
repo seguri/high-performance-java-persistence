@@ -3,6 +3,9 @@ package com.vladmihalcea.hpjp.util.spring.config.jpa;
 import com.vladmihalcea.hpjp.util.DataSourceProxyType;
 import com.vladmihalcea.hpjp.util.logging.InlineQueryLogEntryCreator;
 import com.vladmihalcea.hpjp.util.providers.Database;
+import jakarta.persistence.EntityManagerFactory;
+import java.util.Properties;
+import javax.sql.DataSource;
 import net.ttddyy.dsproxy.listener.logging.SLF4JQueryLoggingListener;
 import net.ttddyy.dsproxy.support.ProxyDataSourceBuilder;
 import org.hibernate.jpa.HibernatePersistenceProvider;
@@ -19,10 +22,6 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManagerFactory;
-import javax.sql.DataSource;
-import java.util.Properties;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -30,87 +29,85 @@ import java.util.Properties;
 @EnableAspectJAutoProxy
 public abstract class AbstractJPAConfiguration {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    public static final String DATA_SOURCE_PROXY_NAME = DataSourceProxyType.DATA_SOURCE_PROXY.name();
+  public static final String DATA_SOURCE_PROXY_NAME = DataSourceProxyType.DATA_SOURCE_PROXY.name();
 
-    private final Database databaseType;
+  private final Database databaseType;
 
-    @Value("${hibernate.dialect}")
-    private String hibernateDialect;
+  @Value("${hibernate.dialect}")
+  private String hibernateDialect;
 
-    protected AbstractJPAConfiguration(Database databaseType) {
-        this.databaseType = databaseType;
-    }
+  protected AbstractJPAConfiguration(Database databaseType) {
+    this.databaseType = databaseType;
+  }
 
-    @Bean
-    public Database database() {
-        return databaseType;
-    }
+  @Bean
+  public Database database() {
+    return databaseType;
+  }
 
-    @Bean
-    public static PropertySourcesPlaceholderConfigurer properties() {
-        return new PropertySourcesPlaceholderConfigurer();
-    }
+  @Bean
+  public static PropertySourcesPlaceholderConfigurer properties() {
+    return new PropertySourcesPlaceholderConfigurer();
+  }
 
-    @Bean
-    public abstract DataSource actualDataSource();
+  @Bean
+  public abstract DataSource actualDataSource();
 
-    private DataSource dataSource() {
-        SLF4JQueryLoggingListener loggingListener = new SLF4JQueryLoggingListener();
-        loggingListener.setQueryLogEntryCreator(new InlineQueryLogEntryCreator());
-        return ProxyDataSourceBuilder
-            .create(actualDataSource())
-            .name(DATA_SOURCE_PROXY_NAME)
-            .listener(loggingListener)
-            .build();
-    }
+  private DataSource dataSource() {
+    SLF4JQueryLoggingListener loggingListener = new SLF4JQueryLoggingListener();
+    loggingListener.setQueryLogEntryCreator(new InlineQueryLogEntryCreator());
+    return ProxyDataSourceBuilder.create(actualDataSource())
+        .name(DATA_SOURCE_PROXY_NAME)
+        .listener(loggingListener)
+        .build();
+  }
 
-    @Bean
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = new LocalContainerEntityManagerFactoryBean();
-        entityManagerFactoryBean.setPersistenceUnitName(getClass().getSimpleName());
-        entityManagerFactoryBean.setPersistenceProvider(new HibernatePersistenceProvider());
-        entityManagerFactoryBean.setDataSource(dataSource());
-        entityManagerFactoryBean.setPackagesToScan(packagesToScan());
+  @Bean
+  public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
+    LocalContainerEntityManagerFactoryBean entityManagerFactoryBean =
+        new LocalContainerEntityManagerFactoryBean();
+    entityManagerFactoryBean.setPersistenceUnitName(getClass().getSimpleName());
+    entityManagerFactoryBean.setPersistenceProvider(new HibernatePersistenceProvider());
+    entityManagerFactoryBean.setDataSource(dataSource());
+    entityManagerFactoryBean.setPackagesToScan(packagesToScan());
 
-        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        HibernateJpaDialect jpaDialect = vendorAdapter.getJpaDialect();
-        jpaDialect.setPrepareConnection(false);
-        entityManagerFactoryBean.setJpaVendorAdapter(vendorAdapter);
-        entityManagerFactoryBean.setJpaProperties(additionalProperties());
-        return entityManagerFactoryBean;
-    }
+    HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+    HibernateJpaDialect jpaDialect = vendorAdapter.getJpaDialect();
+    jpaDialect.setPrepareConnection(false);
+    entityManagerFactoryBean.setJpaVendorAdapter(vendorAdapter);
+    entityManagerFactoryBean.setJpaProperties(additionalProperties());
+    return entityManagerFactoryBean;
+  }
 
-    @Bean
-    public JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory){
-        JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(entityManagerFactory);
-        return transactionManager;
-    }
+  @Bean
+  public JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+    JpaTransactionManager transactionManager = new JpaTransactionManager();
+    transactionManager.setEntityManagerFactory(entityManagerFactory);
+    return transactionManager;
+  }
 
-    @Bean
-    public TransactionTemplate transactionTemplate(EntityManagerFactory entityManagerFactory) {
-        return new TransactionTemplate(transactionManager(entityManagerFactory));
-    }
+  @Bean
+  public TransactionTemplate transactionTemplate(EntityManagerFactory entityManagerFactory) {
+    return new TransactionTemplate(transactionManager(entityManagerFactory));
+  }
 
-    protected Properties additionalProperties() {
-        Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", hibernateDialect);
-        properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
-        return properties;
-    }
+  protected Properties additionalProperties() {
+    Properties properties = new Properties();
+    properties.setProperty("hibernate.dialect", hibernateDialect);
+    properties.setProperty("hibernate.hbm2ddl.auto", "create-drop");
+    return properties;
+  }
 
-    protected String[] packagesToScan() {
-        return new String[]{
-            configurationClass().getPackage().getName()
-        };
-    }
+  protected String[] packagesToScan() {
+    return new String[] {configurationClass().getPackage().getName()};
+  }
 
-    protected Class configurationClass() {
-        return this.getClass();
-    }
+  protected Class configurationClass() {
+    return this.getClass();
+  }
 
-    @Bean
-    protected abstract String databaseType();
+  @Bean
+  protected abstract String databaseType();
 }

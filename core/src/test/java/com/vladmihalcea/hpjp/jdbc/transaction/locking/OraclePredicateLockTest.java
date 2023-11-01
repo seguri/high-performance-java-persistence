@@ -8,8 +8,8 @@ import com.vladmihalcea.hpjp.util.providers.OracleDataSourceProvider;
  */
 public class OraclePredicateLockTest extends AbstractPredicateLockTest {
 
-    @Override
-    protected DataSourceProvider dataSourceProvider() {
-        return new OracleDataSourceProvider();
-    }
+  @Override
+  protected DataSourceProvider dataSourceProvider() {
+    return new OracleDataSourceProvider();
+  }
 }

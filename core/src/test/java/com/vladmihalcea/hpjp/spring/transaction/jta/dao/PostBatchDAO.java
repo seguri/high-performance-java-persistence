@@ -7,5 +7,5 @@ import com.vladmihalcea.hpjp.hibernate.transaction.forum.Post;
  */
 public interface PostBatchDAO extends GenericDAO<Post, Long> {
 
-    void savePosts();
+  void savePosts();
 }

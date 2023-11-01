@@ -8,41 +8,39 @@ import org.slf4j.MDC;
  */
 class TransactionInfo {
 
-    private final Long persistenceContextId;
+  private final Long persistenceContextId;
 
-    private String transactionId;
+  private String transactionId;
 
-    private MDC.MDCCloseable mdc;
+  private MDC.MDCCloseable mdc;
 
-    public TransactionInfo() {
-        this.persistenceContextId = TsidUtils.randomTsid().toLong();
-        setMdc();
-    }
+  public TransactionInfo() {
+    this.persistenceContextId = TsidUtils.randomTsid().toLong();
+    setMdc();
+  }
 
-    public boolean hasTransactionId() {
-        return transactionId != null;
-    }
+  public boolean hasTransactionId() {
+    return transactionId != null;
+  }
 
-    public TransactionInfo setTransactionId(String transactionId) {
-        this.transactionId = transactionId;
-        setMdc();
-        return this;
-    }
+  public TransactionInfo setTransactionId(String transactionId) {
+    this.transactionId = transactionId;
+    setMdc();
+    return this;
+  }
 
-    private void setMdc() {
-        this.mdc = MDC.putCloseable(
+  private void setMdc() {
+    this.mdc =
+        MDC.putCloseable(
             "txId",
             String.format(
                 " Persistence Context Id: [%d], DB Transaction Id: [%s]",
-                persistenceContextId,
-                transactionId
-            )
-        );
-    }
+                persistenceContextId, transactionId));
+  }
 
-    public void close() {
-        if(mdc != null) {
-            mdc.close();
-        }
+  public void close() {
+    if (mdc != null) {
+      mdc.close();
     }
+  }
 }

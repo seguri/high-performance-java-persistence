@@ -5,10 +5,10 @@ package com.vladmihalcea.hpjp.util.providers.queries;
  */
 public class PostgreSQLQueries implements Queries {
 
-    public static final Queries INSTANCE = new PostgreSQLQueries();
+  public static final Queries INSTANCE = new PostgreSQLQueries();
 
-    @Override
-    public String transactionId() {
-        return "SELECT CAST(pg_current_xact_id_if_assigned() AS text)";
-    }
+  @Override
+  public String transactionId() {
+    return "SELECT CAST(pg_current_xact_id_if_assigned() AS text)";
+  }
 }

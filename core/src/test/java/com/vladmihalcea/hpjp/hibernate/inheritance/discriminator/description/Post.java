@@ -12,13 +12,13 @@ import jakarta.persistence.Table;
 @DiscriminatorValue("1")
 public class Post extends Topic {
 
-	private String content;
+  private String content;
 
-	public String getContent() {
-		return content;
-	}
+  public String getContent() {
+    return content;
+  }
 
-	public void setContent(String content) {
-		this.content = content;
-	}
+  public void setContent(String content) {
+    this.content = content;
+  }
 }

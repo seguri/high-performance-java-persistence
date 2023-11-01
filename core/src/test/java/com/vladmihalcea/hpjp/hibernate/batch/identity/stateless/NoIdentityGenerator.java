@@ -9,8 +9,8 @@ import org.hibernate.id.factory.spi.StandardGenerator;
  */
 public class NoIdentityGenerator implements IdentifierGenerator, StandardGenerator {
 
-    @Override
-    public Object generate(SharedSessionContractImplementor session, Object obj) {
-        return null;
-    }
+  @Override
+  public Object generate(SharedSessionContractImplementor session, Object obj) {
+    return null;
+  }
 }

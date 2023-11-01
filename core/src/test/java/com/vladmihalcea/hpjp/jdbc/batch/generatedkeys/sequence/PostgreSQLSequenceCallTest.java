@@ -10,13 +10,13 @@ import com.vladmihalcea.hpjp.util.providers.PostgreSQLDataSourceProvider;
  */
 public class PostgreSQLSequenceCallTest extends AbstractSequenceCallTest {
 
-    @Override
-    protected String callSequenceSyntax() {
-        return "select nextval('post_seq')";
-    }
+  @Override
+  protected String callSequenceSyntax() {
+    return "select nextval('post_seq')";
+  }
 
-    @Override
-    protected DataSourceProvider dataSourceProvider() {
-        return new PostgreSQLDataSourceProvider();
-    }
+  @Override
+  protected DataSourceProvider dataSourceProvider() {
+    return new PostgreSQLDataSourceProvider();
+  }
 }

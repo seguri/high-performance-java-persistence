@@ -7,44 +7,49 @@ import java.util.Date;
  */
 public class PostSummary {
 
-    private Long id;
+  private Long id;
 
-    private String title;
+  private String title;
 
-    private Date createdOn;
+  private Date createdOn;
 
-    private int commentCount;
+  private int commentCount;
 
-    public PostSummary(Long id, String title, Date createdOn, Number commentCount) {
-        this.id = id;
-        this.title = title;
-        this.createdOn = createdOn;
-        this.commentCount = commentCount.intValue();
-    }
+  public PostSummary(Long id, String title, Date createdOn, Number commentCount) {
+    this.id = id;
+    this.title = title;
+    this.createdOn = createdOn;
+    this.commentCount = commentCount.intValue();
+  }
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public String getTitle() {
-        return title;
-    }
+  public String getTitle() {
+    return title;
+  }
 
-    public Date getCreatedOn() {
-        return createdOn;
-    }
+  public Date getCreatedOn() {
+    return createdOn;
+  }
 
-    public int getCommentCount() {
-        return commentCount;
-    }
+  public int getCommentCount() {
+    return commentCount;
+  }
 
-    @Override
-    public String toString() {
-        return "PostSummary{" +
-                "id=" + id +
-                ", title='" + title + '\'' +
-                ", createdOn=" + createdOn +
-                ", commentCount=" + commentCount +
-                '}';
-    }
+  @Override
+  public String toString() {
+    return "PostSummary{"
+        + "id="
+        + id
+        + ", title='"
+        + title
+        + '\''
+        + ", createdOn="
+        + createdOn
+        + ", commentCount="
+        + commentCount
+        + '}';
+  }
 }

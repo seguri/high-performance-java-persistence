@@ -14,26 +14,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public class PostBatchDAOImpl extends GenericDAOImpl<Post, Long> implements PostBatchDAO {
 
-    @PersistenceContext(type = PersistenceContextType.EXTENDED)
-    private EntityManager entityManager;
+  @PersistenceContext(type = PersistenceContextType.EXTENDED)
+  private EntityManager entityManager;
 
-    int entityCount = 10;
+  int entityCount = 10;
 
-    protected PostBatchDAOImpl() {
-        super(Post.class);
+  protected PostBatchDAOImpl() {
+    super(Post.class);
+  }
+
+  @Transactional
+  public void savePosts() {
+    entityManager.unwrap(Session.class).setJdbcBatchSize(10);
+    try {
+      for (long i = 0; i < entityCount; ++i) {
+        Post post = new Post();
+        post.setTitle(String.format("Post nr %d", i));
+        entityManager.persist(post);
+      }
+    } finally {
+      entityManager.unwrap(Session.class).setJdbcBatchSize(null);
     }
-
-    @Transactional
-    public void savePosts() {
-        entityManager.unwrap(Session.class).setJdbcBatchSize(10);
-        try {
-            for (long i = 0; i < entityCount; ++i) {
-                Post post = new Post();
-                post.setTitle(String.format("Post nr %d", i));
-                entityManager.persist(post);
-            }
-        } finally {
-            entityManager.unwrap(Session.class).setJdbcBatchSize(null);
-        }
-    }
+  }
 }

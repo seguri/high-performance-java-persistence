@@ -15,47 +15,37 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ForumService {
 
-    private final PostRepository postRepository;
+  private final PostRepository postRepository;
 
-    private final PostCommentRepository postCommentRepository;
+  private final PostCommentRepository postCommentRepository;
 
-    public ForumService(
-            PostRepository postRepository,
-            PostCommentRepository postCommentRepository) {
-        this.postRepository = postRepository;
-        this.postCommentRepository = postCommentRepository;
-    }
+  public ForumService(PostRepository postRepository, PostCommentRepository postCommentRepository) {
+    this.postRepository = postRepository;
+    this.postCommentRepository = postCommentRepository;
+  }
 
-    @Transactional
-    public Post createPost(String title, String slug) {
-        return postRepository.persist(
-            new Post()
-                .setTitle(title)
-                .setSlug(slug)
-        );
-    }
+  @Transactional
+  public Post createPost(String title, String slug) {
+    return postRepository.persist(new Post().setTitle(title).setSlug(slug));
+  }
 
-    public Post findBySlug(String slug){
-        return postRepository.findBySlug(slug);
-    }
+  public Post findBySlug(String slug) {
+    return postRepository.findBySlug(slug);
+  }
 
-    @Transactional
-    public void updatePostTitle(String slug, String title) {
-        Post post = findBySlug(slug);
-        post.setTitle(title);
-        postRepository.flush();
-    }
+  @Transactional
+  public void updatePostTitle(String slug, String title) {
+    Post post = findBySlug(slug);
+    post.setTitle(title);
+    postRepository.flush();
+  }
 
-    @Transactional
-    public void addComment(Long postId, String review) {
-        Post post = postRepository.lockById(postId, LockModeType.OPTIMISTIC);
+  @Transactional
+  public void addComment(Long postId, String review) {
+    Post post = postRepository.lockById(postId, LockModeType.OPTIMISTIC);
 
-        postCommentRepository.persist(
-            new PostComment()
-                .setReview(review)
-                .setPost(post)
-        );
+    postCommentRepository.persist(new PostComment().setReview(review).setPost(post));
 
-        postRepository.lockById(postId, LockModeType.PESSIMISTIC_READ);
-    }
+    postRepository.lockById(postId, LockModeType.PESSIMISTIC_READ);
+  }
 }

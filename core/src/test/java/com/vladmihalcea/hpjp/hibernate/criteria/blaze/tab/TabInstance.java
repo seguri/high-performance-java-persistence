@@ -9,8 +9,7 @@ public class TabInstance extends AbstractEntity<TabInstancePK> {
 
   private static final long serialVersionUID = 1L;
 
-  @EmbeddedId
-  private TabInstancePK id;
+  @EmbeddedId private TabInstancePK id;
 
   @Column(name = "tab_acronym", nullable = false, length = 50)
   private String tabAcronym;
@@ -29,8 +28,7 @@ public class TabInstance extends AbstractEntity<TabInstancePK> {
   @JoinColumn(name = "tab_ver", nullable = false, insertable = false, updatable = false)
   private TabVersion tabVersion;
 
-  public TabInstance() {
-  }
+  public TabInstance() {}
 
   public TabInstancePK getId() {
     return this.id;

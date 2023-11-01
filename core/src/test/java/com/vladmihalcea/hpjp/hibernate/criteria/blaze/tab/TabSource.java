@@ -21,8 +21,7 @@ public class TabSource implements Serializable {
   @OneToMany(mappedBy = "tabSource")
   private List<TabVersion> tabVersions;
 
-  public TabSource() {
-  }
+  public TabSource() {}
 
   public long getTabKey() {
     return this.tabKey;
@@ -61,5 +60,4 @@ public class TabSource implements Serializable {
 
     return tabVersion;
   }
-
 }

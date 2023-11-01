@@ -3,28 +3,28 @@ package com.vladmihalcea.hpjp.spring.data.recursive.repository;
 import com.vladmihalcea.hpjp.hibernate.query.dto.projection.transformer.DistinctListTransformer;
 import com.vladmihalcea.hpjp.spring.data.recursive.domain.PostCommentDTO;
 import jakarta.persistence.EntityManager;
-import org.hibernate.query.NativeQuery;
-import org.hibernate.query.TupleTransformer;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.query.TupleTransformer;
 
 /**
  * @author Vlad Mihalcea
  */
 public class CustomPostRepositoryImpl implements CustomPostRepository {
 
-    private final EntityManager entityManager;
+  private final EntityManager entityManager;
 
-    public CustomPostRepositoryImpl(
-            EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+  public CustomPostRepositoryImpl(EntityManager entityManager) {
+    this.entityManager = entityManager;
+  }
 
-    @Override
-    public List<PostCommentDTO> findTopCommentDTOsByPost(Long postId, int ranking) {
-        return entityManager.createNativeQuery("""
+  @Override
+  public List<PostCommentDTO> findTopCommentDTOsByPost(Long postId, int ranking) {
+    return entityManager
+        .createNativeQuery(
+            """
                 SELECT id, parent_id, review, created_on, score, total_score
                 FROM (
                     SELECT
@@ -55,31 +55,32 @@ public class CustomPostRepositoryImpl implements CustomPostRepository {
                 ) total_score_filtering
                 WHERE ranking <= :ranking
                 ORDER BY total_score DESC, id ASC
-			    """, PostCommentDTO.class.getSimpleName())
-            .unwrap(NativeQuery.class)
-            .setParameter("postId", 1L)
-            .setParameter("ranking", ranking)
-            .setTupleTransformer(new PostCommentScoreTupleTransformer())
-            .setResultListTransformer(DistinctListTransformer.INSTANCE)
-            .getResultList();
-    }
-    
-    public static class PostCommentScoreTupleTransformer implements TupleTransformer {
-    
-        private Map<Long, PostCommentDTO> postCommentScoreMap = new HashMap<>();
+			    """,
+            PostCommentDTO.class.getSimpleName())
+        .unwrap(NativeQuery.class)
+        .setParameter("postId", 1L)
+        .setParameter("ranking", ranking)
+        .setTupleTransformer(new PostCommentScoreTupleTransformer())
+        .setResultListTransformer(DistinctListTransformer.INSTANCE)
+        .getResultList();
+  }
 
-        @Override
-        public Object transformTuple(Object[] tuple, String[] aliases) {
-            PostCommentDTO commentScore = (PostCommentDTO) tuple[0];
-            Long parentId = commentScore.getParentId();
-            if (parentId != null) {
-                PostCommentDTO parent = postCommentScoreMap.get(parentId);
-                if (parent != null) {
-                    parent.addChild(commentScore);
-                }
-            }
-            postCommentScoreMap.putIfAbsent(commentScore.getId(), commentScore);
-            return commentScore.getRoot();
+  public static class PostCommentScoreTupleTransformer implements TupleTransformer {
+
+    private Map<Long, PostCommentDTO> postCommentScoreMap = new HashMap<>();
+
+    @Override
+    public Object transformTuple(Object[] tuple, String[] aliases) {
+      PostCommentDTO commentScore = (PostCommentDTO) tuple[0];
+      Long parentId = commentScore.getParentId();
+      if (parentId != null) {
+        PostCommentDTO parent = postCommentScoreMap.get(parentId);
+        if (parent != null) {
+          parent.addChild(commentScore);
         }
+      }
+      postCommentScoreMap.putIfAbsent(commentScore.getId(), commentScore);
+      return commentScore.getRoot();
     }
+  }
 }

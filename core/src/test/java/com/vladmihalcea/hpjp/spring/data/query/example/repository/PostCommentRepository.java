@@ -8,5 +8,4 @@ import org.springframework.stereotype.Repository;
  * @author Vlad Mihalcea
  */
 @Repository
-public interface PostCommentRepository extends BaseJpaRepository<PostComment, Long> {
-}
+public interface PostCommentRepository extends BaseJpaRepository<PostComment, Long> {}

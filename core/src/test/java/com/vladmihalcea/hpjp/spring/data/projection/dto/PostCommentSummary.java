@@ -5,9 +5,9 @@ package com.vladmihalcea.hpjp.spring.data.projection.dto;
  */
 public interface PostCommentSummary {
 
-    Long getId();
+  Long getId();
 
-    String getTitle();
+  String getTitle();
 
-    String getReview();
+  String getReview();
 }

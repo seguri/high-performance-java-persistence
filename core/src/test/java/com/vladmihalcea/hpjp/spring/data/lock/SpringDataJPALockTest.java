@@ -1,5 +1,8 @@
 package com.vladmihalcea.hpjp.spring.data.lock;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import com.vladmihalcea.hpjp.spring.data.lock.config.SpringDataJPALockConfiguration;
 import com.vladmihalcea.hpjp.spring.data.lock.domain.Post;
 import com.vladmihalcea.hpjp.spring.data.lock.domain.PostComment;
@@ -8,6 +11,7 @@ import com.vladmihalcea.hpjp.spring.data.lock.repository.PostRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -19,11 +23,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -32,68 +31,62 @@ import static org.junit.Assert.assertNotNull;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringDataJPALockTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private PostCommentRepository postCommentRepository;
+  @Autowired private PostCommentRepository postCommentRepository;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    public static final int POST_COMMENT_COUNT = 5;
+  public static final int POST_COMMENT_COUNT = 5;
 
-    @Test
-    public void test() {
-        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-            Post firstPost = postRepository.persist(
-                new Post()
-                    .setId(1L)
-                    .setTitle("High-Performance Java Persistence")
-                    .setSlug("high-performance-java-persistence")
-            );
+  @Test
+  public void test() {
+    transactionTemplate.execute(
+        (TransactionCallback<Void>)
+            transactionStatus -> {
+              Post firstPost =
+                  postRepository.persist(
+                      new Post()
+                          .setId(1L)
+                          .setTitle("High-Performance Java Persistence")
+                          .setSlug("high-performance-java-persistence"));
 
-            postRepository.persist(
-                new Post()
-                    .setId(2L)
-                    .setTitle("Hypersistence Optimizer")
-                    .setSlug("hypersistence-optimizer")
-            );
+              postRepository.persist(
+                  new Post()
+                      .setId(2L)
+                      .setTitle("Hypersistence Optimizer")
+                      .setSlug("hypersistence-optimizer"));
 
-            long commentId = 0;
+              long commentId = 0;
 
-            for (long i = 0; i < POST_COMMENT_COUNT; i++) {
+              for (long i = 0; i < POST_COMMENT_COUNT; i++) {
                 entityManager.persist(
                     new PostComment()
                         .setId(++commentId)
-                        .setReview(
-                            String.format("The %d chapter is amazing!", commentId)
-                        )
-                    .setPost(firstPost)
-                );
-            }
+                        .setReview(String.format("The %d chapter is amazing!", commentId))
+                        .setPost(firstPost));
+              }
 
-            return null;
+              return null;
+            });
+
+    Post post = postRepository.findBySlug("high-performance-java-persistence");
+    assertNotNull(post);
+
+    transactionTemplate.execute(
+        transactionStatus -> {
+          Post postWithSharedLock = postRepository.lockById(1L, LockModeType.PESSIMISTIC_READ);
+
+          Post postWithExclusiveLock = postRepository.lockById(2L, LockModeType.PESSIMISTIC_WRITE);
+
+          List<PostComment> commentWithLock = postCommentRepository.lockAllByPostId(1L);
+          assertEquals(POST_COMMENT_COUNT, commentWithLock.size());
+
+          return null;
         });
-
-        Post post = postRepository.findBySlug("high-performance-java-persistence");
-        assertNotNull(post);
-
-        transactionTemplate.execute(transactionStatus -> {
-            Post postWithSharedLock = postRepository.lockById(1L, LockModeType.PESSIMISTIC_READ);
-
-            Post postWithExclusiveLock = postRepository.lockById(2L, LockModeType.PESSIMISTIC_WRITE);
-
-            List<PostComment> commentWithLock = postCommentRepository.lockAllByPostId(1L);
-            assertEquals(POST_COMMENT_COUNT, commentWithLock.size());
-
-            return null;
-        });
-    }
+  }
 }
-

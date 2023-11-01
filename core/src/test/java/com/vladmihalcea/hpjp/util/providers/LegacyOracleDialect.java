@@ -13,24 +13,23 @@ import org.hibernate.tool.schema.extract.spi.SequenceInformationExtractor;
  */
 public class LegacyOracleDialect extends OracleDialect {
 
-    public LegacyOracleDialect() {
-    }
+  public LegacyOracleDialect() {}
 
-    public LegacyOracleDialect(DatabaseVersion version) {
-        super(version);
-    }
+  public LegacyOracleDialect(DatabaseVersion version) {
+    super(version);
+  }
 
-    public LegacyOracleDialect(DialectResolutionInfo info) {
-        super(info);
-    }
+  public LegacyOracleDialect(DialectResolutionInfo info) {
+    super(info);
+  }
 
-    @Override
-    public SequenceInformationExtractor getSequenceInformationExtractor() {
-        return SequenceInformationExtractorNoOpImpl.INSTANCE;
-    }
+  @Override
+  public SequenceInformationExtractor getSequenceInformationExtractor() {
+    return SequenceInformationExtractorNoOpImpl.INSTANCE;
+  }
 
-    @Override
-    public LimitHandler getLimitHandler() {
-        return new LegacyOracleLimitHandler(DatabaseVersion.make(21));
-    }
+  @Override
+  public LimitHandler getLimitHandler() {
+    return new LegacyOracleLimitHandler(DatabaseVersion.make(21));
+  }
 }

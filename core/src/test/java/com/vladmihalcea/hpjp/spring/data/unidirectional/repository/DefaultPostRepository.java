@@ -8,6 +8,4 @@ import org.springframework.stereotype.Repository;
  * @author Vlad Mihalcea
  */
 @Repository
-public interface DefaultPostRepository extends JpaRepository<Post, Long> {
-
-}
+public interface DefaultPostRepository extends JpaRepository<Post, Long> {}

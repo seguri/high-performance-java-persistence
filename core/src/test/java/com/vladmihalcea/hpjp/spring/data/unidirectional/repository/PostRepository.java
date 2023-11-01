@@ -8,7 +8,4 @@ import org.springframework.stereotype.Repository;
  * @author Vlad Mihalcea
  */
 @Repository
-public interface PostRepository extends BaseJpaRepository<Post, Long>,
-    CustomPostRepository<Long> {
-
-}
+public interface PostRepository extends BaseJpaRepository<Post, Long>, CustomPostRepository<Long> {}

@@ -5,5 +5,5 @@ package com.vladmihalcea.hpjp.hibernate.inheritance.spring.service;
  */
 public interface CampaignService {
 
-    void send(String title, String message);
+  void send(String title, String message);
 }

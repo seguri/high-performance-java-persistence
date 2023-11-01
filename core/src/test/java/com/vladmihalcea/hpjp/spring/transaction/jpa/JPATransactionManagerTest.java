@@ -1,5 +1,8 @@
 package com.vladmihalcea.hpjp.spring.transaction.jpa;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import com.vladmihalcea.hpjp.hibernate.forum.dto.PostDTO;
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Post;
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Tag;
@@ -9,6 +12,7 @@ import com.vladmihalcea.hpjp.spring.transaction.jpa.repository.TagRepository;
 import com.vladmihalcea.hpjp.spring.transaction.jpa.service.ForumService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,11 +27,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -36,30 +35,26 @@ import static org.junit.Assert.assertNotNull;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class JPATransactionManagerTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private ForumService forumService;
+  @Autowired private ForumService forumService;
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private TagRepository tagDAO;
+  @Autowired private TagRepository tagDAO;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
-    @Before
-    public void init() {
-        try {
-            transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
+  @Before
+  public void init() {
+    try {
+      transactionTemplate.execute(
+          (TransactionCallback<Void>)
+              transactionStatus -> {
                 Tag hibernate = new Tag();
                 hibernate.setName("hibernate");
                 tagDAO.persist(hibernate);
@@ -70,69 +65,75 @@ public class JPATransactionManagerTest {
 
                 postRepository.savePosts();
                 return null;
-            });
-        } catch (TransactionException e) {
-            LOGGER.error("Failure", e);
-        }
-
+              });
+    } catch (TransactionException e) {
+      LOGGER.error("Failure", e);
     }
+  }
 
-    @Test
-    public void test() {
-        Post newPost = forumService.newPost("High-Performance Java Persistence", "hibernate", "jpa");
-        assertNotNull(newPost.getId());
+  @Test
+  public void test() {
+    Post newPost = forumService.newPost("High-Performance Java Persistence", "hibernate", "jpa");
+    assertNotNull(newPost.getId());
 
-        List<Post> posts = forumService.findAllByTitle("High-Performance Java Persistence");
-        assertEquals(1, posts.size());
+    List<Post> posts = forumService.findAllByTitle("High-Performance Java Persistence");
+    assertEquals(1, posts.size());
 
-        Post post = forumService.findById(newPost.getId());
-        //Check if the post was updated
-        assertEquals(
-            "High-Performance Java Persistence",
-            entityManager.find(Post.class, post.getId()).getTitle()
-        );
+    Post post = forumService.findById(newPost.getId());
+    // Check if the post was updated
+    assertEquals(
+        "High-Performance Java Persistence",
+        entityManager.find(Post.class, post.getId()).getTitle());
 
-        PostDTO postDTO = forumService.getPostDTOById(newPost.getId());
-        assertEquals("High-Performance Java Persistence", postDTO.getTitle());
+    PostDTO postDTO = forumService.getPostDTOById(newPost.getId());
+    assertEquals("High-Performance Java Persistence", postDTO.getTitle());
 
-        postDTO = forumService.savePostTitle(newPost.getId(), "High-Performance Java Persistence, 2nd edition");
-        assertEquals("High-Performance Java Persistence, 2nd edition", postDTO.getTitle());
-    }
+    postDTO =
+        forumService.savePostTitle(
+            newPost.getId(), "High-Performance Java Persistence, 2nd edition");
+    assertEquals("High-Performance Java Persistence, 2nd edition", postDTO.getTitle());
+  }
 
-    @Test
-    public void testJdbcTemplate() {
-        transactionTemplate.execute(status -> {
-            int postCountBeforePersist = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
+  @Test
+  public void testJdbcTemplate() {
+    transactionTemplate.execute(
+        status -> {
+          int postCountBeforePersist =
+              jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
 
-            Post post = new Post();
-            post.setTitle("Latest post!");
-            entityManager.persist(post);
-            entityManager.flush();
+          Post post = new Post();
+          post.setTitle("Latest post!");
+          entityManager.persist(post);
+          entityManager.flush();
 
-            int postCountAfterPersist = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
+          int postCountAfterPersist =
+              jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
 
-            assertEquals(postCountAfterPersist, postCountBeforePersist + 1);
-            return null;
+          assertEquals(postCountAfterPersist, postCountBeforePersist + 1);
+          return null;
         });
-    }
+  }
 
-    @Test
-    public void testTransactionNoStatement() {
-        transactionTemplate.execute(status -> null);
-    }
+  @Test
+  public void testTransactionNoStatement() {
+    transactionTemplate.execute(status -> null);
+  }
 
-    @Test
-    public void testJdbcTemplateWithoutTransaction() {
-        int postCountBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
+  @Test
+  public void testJdbcTemplateWithoutTransaction() {
+    int postCountBefore =
+        jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
 
-        transactionTemplate.execute(status -> {
-            jdbcTemplate.execute("DELETE FROM post");
+    transactionTemplate.execute(
+        status -> {
+          jdbcTemplate.execute("DELETE FROM post");
 
-            return null;
+          return null;
         });
 
-        int postCountAfter = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
+    int postCountAfter =
+        jdbcTemplate.queryForObject("SELECT COUNT(*) FROM post", Number.class).intValue();
 
-        assertEquals(0, postCountAfter);
-    }
+    assertEquals(0, postCountAfter);
+  }
 }

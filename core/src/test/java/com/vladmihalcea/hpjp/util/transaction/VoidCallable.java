@@ -8,10 +8,10 @@ import java.util.concurrent.Callable;
 @FunctionalInterface
 public interface VoidCallable extends Callable<Void> {
 
-	void execute();
+  void execute();
 
-	default Void call() throws Exception {
-		execute();
-		return null;
-	}
+  default Void call() throws Exception {
+    execute();
+    return null;
+  }
 }

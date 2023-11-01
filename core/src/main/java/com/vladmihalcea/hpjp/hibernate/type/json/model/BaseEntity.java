@@ -10,21 +10,19 @@ import jakarta.persistence.Version;
 @MappedSuperclass
 public class BaseEntity {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    @Version
-    private Short version;
+  @Version private Short version;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+  public void setId(Long id) {
+    this.id = id;
+  }
 
-    public Short getVersion() {
-        return version;
-    }
+  public Short getVersion() {
+    return version;
+  }
 }

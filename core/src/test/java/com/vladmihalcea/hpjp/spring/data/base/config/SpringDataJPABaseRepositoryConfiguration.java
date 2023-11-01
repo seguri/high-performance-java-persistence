@@ -5,18 +5,13 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 /**
- *
  * @author Vlad Mihalcea
  */
 @ComponentScan(
     basePackages = {
-        "com.vladmihalcea.hpjp.spring.data.base.service",
-    }
-)
+      "com.vladmihalcea.hpjp.spring.data.base.service",
+    })
 @EnableJpaRepositories(
     value = "com.vladmihalcea.hpjp.spring.data.base.repository",
-    repositoryBaseClass = BaseJpaRepositoryImpl.class
-)
-public class SpringDataJPABaseRepositoryConfiguration extends SpringDataJPABaseConfiguration {
-
-}
+    repositoryBaseClass = BaseJpaRepositoryImpl.class)
+public class SpringDataJPABaseRepositoryConfiguration extends SpringDataJPABaseConfiguration {}

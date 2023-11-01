@@ -9,7 +9,7 @@ import org.springframework.data.domain.Sort;
  */
 public interface CustomPostRepository {
 
-    PagedList<PostDTO> findTopN(Sort sortBy, int pageSize);
+  PagedList<PostDTO> findTopN(Sort sortBy, int pageSize);
 
-    PagedList<PostDTO> findNextN(Sort sortBy, PagedList<PostDTO> previousPage);
+  PagedList<PostDTO> findNextN(Sort sortBy, PagedList<PostDTO> previousPage);
 }

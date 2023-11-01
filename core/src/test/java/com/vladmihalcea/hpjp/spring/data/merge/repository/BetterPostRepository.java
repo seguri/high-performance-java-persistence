@@ -2,11 +2,10 @@ package com.vladmihalcea.hpjp.spring.data.merge.repository;
 
 import com.vladmihalcea.hpjp.spring.data.merge.domain.Post;
 import io.hypersistence.utils.spring.repository.BaseJpaRepository;
+import java.util.List;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 /**
  * @author Vlad Mihalcea
@@ -14,11 +13,12 @@ import java.util.List;
 @Repository
 public interface BetterPostRepository extends BaseJpaRepository<Post, Long> {
 
-    @Query("""
+  @Query(
+      """
         select p
         from Post p
         left join fetch p.comments
         where p.title like :titlePrefix
         """)
-    List<Post> findAllWithCommentsByTitleLike(@Param("titlePrefix") String titlePrefix);
+  List<Post> findAllWithCommentsByTitleLike(@Param("titlePrefix") String titlePrefix);
 }

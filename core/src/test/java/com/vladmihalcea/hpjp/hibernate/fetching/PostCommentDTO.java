@@ -5,27 +5,27 @@ package com.vladmihalcea.hpjp.hibernate.fetching;
  */
 public class PostCommentDTO {
 
-    private final Long id;
+  private final Long id;
 
-    private final String review;
+  private final String review;
 
-    private final String title;
+  private final String title;
 
-    public PostCommentDTO(Long id, String review, String title) {
-        this.id = id;
-        this.review = review;
-        this.title = title;
-    }
+  public PostCommentDTO(Long id, String review, String title) {
+    this.id = id;
+    this.review = review;
+    this.title = title;
+  }
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public String getReview() {
-        return review;
-    }
+  public String getReview() {
+    return review;
+  }
 
-    public String getTitle() {
-        return title;
-    }
+  public String getTitle() {
+    return title;
+  }
 }

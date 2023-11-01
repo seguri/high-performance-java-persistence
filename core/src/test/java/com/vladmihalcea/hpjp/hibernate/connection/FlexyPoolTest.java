@@ -1,6 +1,16 @@
 package com.vladmihalcea.hpjp.hibernate.connection;
 
+import static com.vladmihalcea.hpjp.hibernate.connection.jta.FlexyPoolEntities.Post;
+import static com.vladmihalcea.hpjp.util.AbstractTest.ENABLE_LONG_RUNNING_TESTS;
+
 import com.vladmihalcea.flexypool.FlexyPoolDataSource;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,106 +24,91 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import javax.sql.DataSource;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static com.vladmihalcea.hpjp.hibernate.connection.jta.FlexyPoolEntities.Post;
-import static com.vladmihalcea.hpjp.util.AbstractTest.ENABLE_LONG_RUNNING_TESTS;
-
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = FlexyPoolTestConfiguration.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class FlexyPoolTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private DataSource dataSource;
+  @Autowired private DataSource dataSource;
 
-    private int threadCount = 6;
+  private int threadCount = 6;
 
-    private int seconds = 120;
+  private int seconds = 120;
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+  private ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
 
-    @Before
-    public void init() {
-        FlexyPoolDataSource flexyPoolDataSource = (FlexyPoolDataSource) dataSource;
-        flexyPoolDataSource.start();
+  @Before
+  public void init() {
+    FlexyPoolDataSource flexyPoolDataSource = (FlexyPoolDataSource) dataSource;
+    flexyPoolDataSource.start();
+  }
+
+  @After
+  public void destroy() {
+    executorService.shutdownNow();
+    FlexyPoolDataSource flexyPoolDataSource = (FlexyPoolDataSource) dataSource;
+    flexyPoolDataSource.stop();
+  }
+
+  @Test
+  public void test() throws InterruptedException, ExecutionException {
+    if (!ENABLE_LONG_RUNNING_TESTS) {
+      return;
     }
+    long startNanos = System.nanoTime();
 
-    @After
-    public void destroy() {
-        executorService.shutdownNow();
-        FlexyPoolDataSource flexyPoolDataSource = (FlexyPoolDataSource) dataSource;
-        flexyPoolDataSource.stop();
-    }
+    CountDownLatch awaitTermination = new CountDownLatch(threadCount);
+    List<Callable<Void>> tasks = new ArrayList<>();
 
-    @Test
-    public void test() throws InterruptedException, ExecutionException {
-        if(!ENABLE_LONG_RUNNING_TESTS) {
-            return;
-        }
-        long startNanos = System.nanoTime();
+    AtomicLong postCount = new AtomicLong();
 
-        CountDownLatch awaitTermination = new CountDownLatch(threadCount);
-        List<Callable<Void>> tasks = new ArrayList<>();
+    for (int i = 0; i < threadCount; i++) {
+      tasks.add(
+          () -> {
+            LOGGER.info("Starting worker thread");
 
-        AtomicLong postCount = new AtomicLong();
+            while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos) < seconds) {
+              transactionTemplate.execute(
+                  (TransactionCallback<Void>)
+                      transactionStatus -> {
+                        for (int j = 0; j < 100; j++) {
+                          entityManager.persist(new Post());
+                        }
 
-        for (int i = 0; i < threadCount; i++) {
-            tasks.add(
-                () -> {
-                    LOGGER.info("Starting worker thread");
-                    
-                    while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startNanos) < seconds) {
-                        transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-                            for (int j = 0; j < 100; j++) {
-                                entityManager.persist(new Post());
-                            }
-
-                            postCount.set(
-                                entityManager.createQuery(
-                                    "select count(p) " +
-                                    "from Post p ", Number.class)
+                        postCount.set(
+                            entityManager
+                                .createQuery("select count(p) " + "from Post p ", Number.class)
                                 .getSingleResult()
-                                .longValue()
-                            );
+                                .longValue());
 
-                            if (postCount.get() % 1000 == 0) {
-                                LOGGER.info("Post entity count: {}", postCount);
-                                sleep(250, TimeUnit.MILLISECONDS);
-                            }
+                        if (postCount.get() % 1000 == 0) {
+                          LOGGER.info("Post entity count: {}", postCount);
+                          sleep(250, TimeUnit.MILLISECONDS);
+                        }
 
-                            return null;
-                        });
-                    }
-                    awaitTermination.countDown();
-                    return null;
-                }
-            );
-        }
-
-        executorService.invokeAll(tasks);
-        awaitTermination.await();
+                        return null;
+                      });
+            }
+            awaitTermination.countDown();
+            return null;
+          });
     }
 
-    private void sleep(long duration, TimeUnit timeUnit) {
-        try {
-            Thread.sleep(timeUnit.toMillis(duration));
-        } catch (InterruptedException e) {
-            Thread.interrupted();
-        }
+    executorService.invokeAll(tasks);
+    awaitTermination.await();
+  }
+
+  private void sleep(long duration, TimeUnit timeUnit) {
+    try {
+      Thread.sleep(timeUnit.toMillis(duration));
+    } catch (InterruptedException e) {
+      Thread.interrupted();
     }
+  }
 }

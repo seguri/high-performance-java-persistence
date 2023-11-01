@@ -11,23 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
  */
 public class CustomPostRepositoryImpl implements CustomPostRepository {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    int entityCount = 10;
+  int entityCount = 10;
 
-    @Transactional
-    public void savePosts() {
-        entityManager.unwrap(Session.class).setJdbcBatchSize(10);
-        try {
-            for ( long i = 0; i < entityCount; ++i ) {
-                Post post = new Post();
-                post.setTitle(String.format( "Post nr %d", i ));
-                entityManager.persist( post );
-            }
-            entityManager.flush();
-        } finally {
-            entityManager.unwrap(Session.class).setJdbcBatchSize(null);
-        }
+  @Transactional
+  public void savePosts() {
+    entityManager.unwrap(Session.class).setJdbcBatchSize(10);
+    try {
+      for (long i = 0; i < entityCount; ++i) {
+        Post post = new Post();
+        post.setTitle(String.format("Post nr %d", i));
+        entityManager.persist(post);
+      }
+      entityManager.flush();
+    } finally {
+      entityManager.unwrap(Session.class).setJdbcBatchSize(null);
     }
+  }
 }

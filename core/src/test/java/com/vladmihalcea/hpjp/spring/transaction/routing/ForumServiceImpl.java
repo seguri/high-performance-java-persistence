@@ -4,11 +4,10 @@ import com.vladmihalcea.hpjp.hibernate.transaction.forum.Post;
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Tag;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Arrays;
 import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * @author Vlad Mihalcea
@@ -17,38 +16,43 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ForumServiceImpl implements ForumService {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Override
-    @Transactional
-    public Post newPost(String title, String... tags) {
-        Post post = new Post();
-        post.setTitle(title);
+  @Override
+  @Transactional
+  public Post newPost(String title, String... tags) {
+    Post post = new Post();
+    post.setTitle(title);
 
-        post.getTags().addAll(
-            entityManager.createQuery("""
+    post.getTags()
+        .addAll(
+            entityManager
+                .createQuery(
+                    """
                 select t
                 from Tag t
                 where t.name in :tags
-                """, Tag.class)
-            .setParameter("tags", Arrays.asList(tags))
-            .getResultList()
-        );
+                """,
+                    Tag.class)
+                .setParameter("tags", Arrays.asList(tags))
+                .getResultList());
 
-        entityManager.persist(post);
+    entityManager.persist(post);
 
-        return post;
-    }
+    return post;
+  }
 
-    @Override
-    public List<Post> findAllPostsByTitle(String title) {
-        return entityManager.createQuery("""
+  @Override
+  public List<Post> findAllPostsByTitle(String title) {
+    return entityManager
+        .createQuery(
+            """
             select p
             from Post p
             where p.title = :title
-            """, Post.class)
+            """,
+            Post.class)
         .setParameter("title", title)
         .getResultList();
-    }
+  }
 }

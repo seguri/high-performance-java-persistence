@@ -1,155 +1,146 @@
 package com.vladmihalcea.hpjp.hibernate.mapping;
 
-import com.vladmihalcea.hpjp.util.AbstractSQLServerIntegrationTest;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
+import com.vladmihalcea.hpjp.util.AbstractSQLServerIntegrationTest;
 import jakarta.persistence.*;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
-public class MapsIdWithOneToOneTest extends
-		AbstractSQLServerIntegrationTest {
+public class MapsIdWithOneToOneTest extends AbstractSQLServerIntegrationTest {
 
-	@Override
-	protected Class<?>[] entities() {
-		return new Class<?>[] {
-			Person.class,
-			Group.class,
-			GroupAssociationEntity.class
-		};
-	}
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Person.class, Group.class, GroupAssociationEntity.class};
+  }
 
-	@Test
-	public void testLifecycle() {
+  @Test
+  public void testLifecycle() {
 
-		doInJPA( entityManager -> {
+    doInJPA(
+        entityManager -> {
+          Person person1 = new Person();
+          person1.id = "abc1";
+          entityManager.persist(person1);
 
-			Person person1 = new Person();
-			person1.id = "abc1";
-			entityManager.persist(person1);
+          Person person2 = new Person();
+          person2.id = "abc2";
+          entityManager.persist(person2);
 
-			Person person2 = new Person();
-			person2.id = "abc2";
-			entityManager.persist(person2);
+          Group group = new Group();
+          group.id = "g1";
+          entityManager.persist(group);
 
-			Group group = new Group();
-			group.id = "g1";
-			entityManager.persist(group);
+          GroupAssociationEntity p1g1 = new GroupAssociationEntity();
+          p1g1.id = new GroupAssociationKey("G1", "ABC1");
+          p1g1.group = group;
+          p1g1.person = person1;
+          entityManager.persist(p1g1);
 
-			GroupAssociationEntity p1g1 = new GroupAssociationEntity();
-			p1g1.id = new GroupAssociationKey("G1", "ABC1");
-			p1g1.group = group;
-			p1g1.person = person1;
-			entityManager.persist(p1g1);
+          GroupAssociationEntity p2g1 = new GroupAssociationEntity();
+          p2g1.id = new GroupAssociationKey("G1", "ABC2");
+          p2g1.group = group;
+          p2g1.person = person2;
+          entityManager.persist(p2g1);
+        });
 
-			GroupAssociationEntity p2g1 = new GroupAssociationEntity();
-			p2g1.id = new GroupAssociationKey( "G1", "ABC2" );
-			p2g1.group = group;
-			p2g1.person = person2;
-			entityManager.persist(p2g1);
-		} );
+    doInJPA(
+        entityManager -> {
+          Group group = entityManager.find(Group.class, "g1");
+          assertEquals(2, group.persons.size());
+        });
 
-		doInJPA( entityManager -> {
-			Group group = entityManager.find(Group.class, "g1");
-			assertEquals(2, group.persons.size());
-		} );
+    doInJPA(
+        entityManager -> {
+          Person person = entityManager.find(Person.class, "abc1");
+          assertEquals(1, person.groups.size());
+        });
+  }
 
-		doInJPA( entityManager -> {
-			Person person = entityManager.find(Person.class, "abc1");
-			assertEquals(1, person.groups.size());
-		} );
+  @Entity(name = "Person")
+  public static class Person {
 
-	}
+    @Id
+    @Column(name = "id")
+    private String id;
 
-	@Entity(name = "Person")
-	public static class Person {
+    @OneToMany(mappedBy = "person")
+    private List<GroupAssociationEntity> groups;
+  }
 
-		@Id
-		@Column(name = "id")
-		private String id;
+  @Entity(name = "GroupAssociationEntity")
+  public static class GroupAssociationEntity {
 
+    @EmbeddedId private GroupAssociationKey id;
 
-		@OneToMany(mappedBy = "person")
-		private List<GroupAssociationEntity> groups;
-	}
+    @ManyToOne
+    @MapsId("id")
+    private Group group;
 
-	@Entity(name = "GroupAssociationEntity")
-	public static class GroupAssociationEntity {
+    @ManyToOne
+    @MapsId("memberOf")
+    private Person person;
+  }
 
-		@EmbeddedId
-		private GroupAssociationKey id;
+  @Embeddable
+  public static class GroupAssociationKey implements Serializable {
 
-		@ManyToOne
-		@MapsId("id")
-		private Group group;
+    private String id;
 
-		@ManyToOne
-		@MapsId("memberOf")
-		private Person person;
-	}
+    private String memberOf;
 
-	@Embeddable
-	public static class GroupAssociationKey implements Serializable{
+    public GroupAssociationKey() {}
 
-		private String id;
+    public GroupAssociationKey(String id, String memberOf) {
+      this.id = id;
+      this.memberOf = memberOf;
+    }
 
-		private String memberOf;
+    public String getId() {
+      return id;
+    }
 
-		public GroupAssociationKey() {
-		}
+    public void setId(String id) {
+      this.id = id;
+    }
 
-		public GroupAssociationKey(String id, String memberOf) {
-			this.id = id;
-			this.memberOf = memberOf;
-		}
+    public String getMemberOf() {
+      return memberOf;
+    }
 
-		public String getId() {
-			return id;
-		}
+    public void setMemberOf(String memberOf) {
+      this.memberOf = memberOf;
+    }
 
-		public void setId(String id) {
-			this.id = id;
-		}
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof GroupAssociationKey)) return false;
+      GroupAssociationKey that = (GroupAssociationKey) o;
+      return Objects.equals(getId(), that.getId())
+          && Objects.equals(getMemberOf(), that.getMemberOf());
+    }
 
-		public String getMemberOf() {
-			return memberOf;
-		}
+    @Override
+    public int hashCode() {
+      return Objects.hash(getId(), getMemberOf());
+    }
+  }
 
-		public void setMemberOf(String memberOf) {
-			this.memberOf = memberOf;
-		}
+  @Entity(name = "Group")
+  @Table(name = "groups")
+  public static class Group {
 
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (!(o instanceof GroupAssociationKey)) return false;
-			GroupAssociationKey that = (GroupAssociationKey) o;
-			return Objects.equals(getId(), that.getId()) &&
-					Objects.equals(getMemberOf(), that.getMemberOf());
-		}
+    @Id
+    @Column(name = "id")
+    private String id;
 
-		@Override
-		public int hashCode() {
-			return Objects.hash(getId(), getMemberOf());
-		}
-	}
-
-	@Entity(name = "Group")
-	@Table(name = "groups")
-	public static class Group {
-
-		@Id
-		@Column(name = "id")
-		private String id;
-
-		@OneToMany(mappedBy = "group")
-		private List<GroupAssociationEntity> persons;
-
-	}
+    @OneToMany(mappedBy = "group")
+    private List<GroupAssociationEntity> persons;
+  }
 }

@@ -5,20 +5,20 @@ package com.vladmihalcea.hpjp.hibernate.forum.dto;
  */
 public class PostDTO {
 
-	private final Long id;
+  private final Long id;
 
-	private final String title;
+  private final String title;
 
-	public PostDTO(Number id, String title) {
-		this.id = id.longValue();
-		this.title = title;
-	}
+  public PostDTO(Number id, String title) {
+    this.id = id.longValue();
+    this.title = title;
+  }
 
-	public Long getId() {
-		return id;
-	}
+  public Long getId() {
+    return id;
+  }
 
-	public String getTitle() {
-		return title;
-	}
+  public String getTitle() {
+    return title;
+  }
 }

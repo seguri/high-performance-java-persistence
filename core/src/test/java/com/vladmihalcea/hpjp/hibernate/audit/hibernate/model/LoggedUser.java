@@ -5,17 +5,17 @@ package com.vladmihalcea.hpjp.hibernate.audit.hibernate.model;
  */
 public class LoggedUser {
 
-    private static final ThreadLocal<String> userHolder = new ThreadLocal<>();
+  private static final ThreadLocal<String> userHolder = new ThreadLocal<>();
 
-    public static void logIn(String user) {
-        userHolder.set(user);
-    }
+  public static void logIn(String user) {
+    userHolder.set(user);
+  }
 
-    public static void logOut() {
-        userHolder.remove();
-    }
+  public static void logOut() {
+    userHolder.remove();
+  }
 
-    public static String get() {
-        return userHolder.get();
-    }
+  public static String get() {
+    return userHolder.get();
+  }
 }

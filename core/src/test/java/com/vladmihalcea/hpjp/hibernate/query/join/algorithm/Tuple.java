@@ -8,18 +8,18 @@ import java.util.Map;
  */
 public class Tuple {
 
-    private final Map<String, Object> valueMap = new HashMap<>();
+  private final Map<String, Object> valueMap = new HashMap<>();
 
-    public Tuple add(String alias, Object value) {
-        valueMap.put(alias, value);
-        return this;
-    }
+  public Tuple add(String alias, Object value) {
+    valueMap.put(alias, value);
+    return this;
+  }
 
-    public <E> E get(String alias) {
-        return (E) valueMap.get(alias);
-    }
+  public <E> E get(String alias) {
+    return (E) valueMap.get(alias);
+  }
 
-    public long getLong(String alias) {
-        return (Long) valueMap.get(alias);
-    }
+  public long getLong(String alias) {
+    return (Long) valueMap.get(alias);
+  }
 }

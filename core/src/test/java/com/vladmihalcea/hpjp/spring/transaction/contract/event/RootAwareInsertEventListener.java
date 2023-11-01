@@ -14,30 +14,29 @@ import org.slf4j.LoggerFactory;
  */
 public class RootAwareInsertEventListener implements PersistEventListener {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RootAwareInsertEventListener.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RootAwareInsertEventListener.class);
 
-    public static final RootAwareInsertEventListener INSTANCE = new RootAwareInsertEventListener();
+  public static final RootAwareInsertEventListener INSTANCE = new RootAwareInsertEventListener();
 
-    @Override
-    public void onPersist(PersistEvent event) throws HibernateException {
-        final Object entity = event.getObject();
+  @Override
+  public void onPersist(PersistEvent event) throws HibernateException {
+    final Object entity = event.getObject();
 
-        if (entity instanceof RootAware rootAware) {
-            Object root = rootAware.root();
-            event.getSession().lock(root, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+    if (entity instanceof RootAware rootAware) {
+      Object root = rootAware.root();
+      event.getSession().lock(root, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
 
-            LOGGER.info(
-                "Incrementing the [{}] entity version " +
-                "because the [{}] child entity has been inserted",
-                root,
-                entity
-            );
-        }
+      LOGGER.info(
+          "Incrementing the [{}] entity version "
+              + "because the [{}] child entity has been inserted",
+          root,
+          entity);
     }
+  }
 
-    @Override
-    public void onPersist(PersistEvent event, PersistContext persistContext)
-            throws HibernateException {
-        onPersist(event);
-    }
+  @Override
+  public void onPersist(PersistEvent event, PersistContext persistContext)
+      throws HibernateException {
+    onPersist(event);
+  }
 }

@@ -9,8 +9,8 @@ import com.vladmihalcea.hpjp.util.providers.Database;
  */
 public abstract class AbstractSQLServerIntegrationTest extends AbstractTest {
 
-    @Override
-    protected Database database() {
-        return Database.SQLSERVER;
-    }
+  @Override
+  protected Database database() {
+    return Database.SQLSERVER;
+  }
 }

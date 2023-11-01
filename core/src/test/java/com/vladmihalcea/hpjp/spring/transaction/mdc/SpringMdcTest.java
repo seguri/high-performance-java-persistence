@@ -22,39 +22,31 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringMdcTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private ForumService forumService;
+  @Autowired private ForumService forumService;
 
-    @Test
-    public void testAutoMDC() {
-        Post post = forumService.createPost(
-            "High-Performance Java Persistence",
-            "high-performance-java-persistence"
-        );
+  @Test
+  public void testAutoMDC() {
+    Post post =
+        forumService.createPost(
+            "High-Performance Java Persistence", "high-performance-java-persistence");
 
-        Long postId = post.getId();
+    Long postId = post.getId();
 
-        forumService.addComment(postId, "Awesome");
+    forumService.addComment(postId, "Awesome");
+  }
+
+  @Test
+  public void testManualMDC() {
+    try (MDC.MDCCloseable mdc =
+        MDC.putCloseable(
+            "txId",
+            String.format(
+                " Persistence Context Id: [%d], DB Transaction Id: [%s]", 123456, 7890))) {
+      LOGGER.info("Fetch Post by title");
     }
-
-    @Test
-    public void testManualMDC() {
-        try(MDC.MDCCloseable mdc = MDC
-            .putCloseable(
-                "txId",
-                String.format(
-                    " Persistence Context Id: [%d], DB Transaction Id: [%s]",
-                    123456,
-                    7890
-                )
-            )
-        ) {
-            LOGGER.info("Fetch Post by title");
-        }
-    }
+  }
 }

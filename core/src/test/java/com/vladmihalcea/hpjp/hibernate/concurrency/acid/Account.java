@@ -11,34 +11,33 @@ import jakarta.persistence.Table;
 @Table(name = "account")
 public class Account {
 
-    @Id
-    private String id;
+  @Id private String id;
 
-    private String owner;
+  private String owner;
 
-    private long balance;
+  private long balance;
 
-    public String getId() {
-        return id;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  public void setId(String id) {
+    this.id = id;
+  }
 
-    public String getOwner() {
-        return owner;
-    }
+  public String getOwner() {
+    return owner;
+  }
 
-    public void setOwner(String owner) {
-        this.owner = owner;
-    }
+  public void setOwner(String owner) {
+    this.owner = owner;
+  }
 
-    public long getAccountBalance() {
-        return balance;
-    }
+  public long getAccountBalance() {
+    return balance;
+  }
 
-    public void setBalance(long balance) {
-        this.balance = balance;
-    }
+  public void setBalance(long balance) {
+    this.balance = balance;
+  }
 }

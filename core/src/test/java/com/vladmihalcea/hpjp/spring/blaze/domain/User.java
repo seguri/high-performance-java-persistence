@@ -12,39 +12,38 @@ import jakarta.persistence.Table;
 @Table(name = "blog_user")
 public class User {
 
-    @Id
-    private Long id;
+  @Id private Long id;
 
-    @Column(name = "first_name")
-    private String firstName;
+  @Column(name = "first_name")
+  private String firstName;
 
-    @Column(name = "last_name")
-    private String lastName;
+  @Column(name = "last_name")
+  private String lastName;
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public User setId(Long id) {
-        this.id = id;
-        return this;
-    }
+  public User setId(Long id) {
+    this.id = id;
+    return this;
+  }
 
-    public String getFirstName() {
-        return firstName;
-    }
+  public String getFirstName() {
+    return firstName;
+  }
 
-    public User setFirstName(String firstName) {
-        this.firstName = firstName;
-        return this;
-    }
+  public User setFirstName(String firstName) {
+    this.firstName = firstName;
+    return this;
+  }
 
-    public String getLastName() {
-        return lastName;
-    }
+  public String getLastName() {
+    return lastName;
+  }
 
-    public User setLastName(String lastName) {
-        this.lastName = lastName;
-        return this;
-    }
+  public User setLastName(String lastName) {
+    this.lastName = lastName;
+    return this;
+  }
 }

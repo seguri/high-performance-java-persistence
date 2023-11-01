@@ -1,115 +1,113 @@
 package com.vladmihalcea.hpjp.hibernate.query.timeout;
 
 import com.vladmihalcea.hpjp.util.AbstractSQLServerIntegrationTest;
-import org.hibernate.jpa.AvailableHints;
-import org.hibernate.jpa.QueryHints;
-import org.junit.Test;
-
 import jakarta.persistence.*;
 import java.util.List;
 import java.util.Properties;
+import org.hibernate.jpa.AvailableHints;
+import org.junit.Test;
 
 /**
  * @author Vlad Mihalcea
  */
 public class SQLServerServerSideTimeoutTest extends AbstractSQLServerIntegrationTest {
 
-    @Override
-    protected Class<?>[] entities() {
-        return new Class<?>[]{
-            Post.class
-        };
+  @Override
+  protected Class<?>[] entities() {
+    return new Class<?>[] {Post.class};
+  }
+
+  @Override
+  protected void additionalProperties(Properties properties) {
+    properties.setProperty(AvailableHints.HINT_TIMEOUT, String.valueOf(1));
+  }
+
+  @Test
+  public void testQueryTimeout() {
+    if (!ENABLE_LONG_RUNNING_TESTS) {
+      return;
     }
+    try {
+      executeStatement("EXEC sp_configure 'remote query timeout', 1");
+      executeStatement("RECONFIGURE");
 
-    @Override
-    protected void additionalProperties(Properties properties) {
-        properties.setProperty(
-            AvailableHints.HINT_TIMEOUT, String.valueOf(1)
-        );
-    }
+      doInJPA(
+          entityManager -> {
+            Post post = new Post();
+            post.setTitle("High-Performance Java Persistence");
 
-    @Test
-    public void testQueryTimeout() {
-        if(!ENABLE_LONG_RUNNING_TESTS) {
-            return;
-        }
-        try {
-            executeStatement("EXEC sp_configure 'remote query timeout', 1");
-            executeStatement("RECONFIGURE");
+            entityManager.persist(post);
+            return post.getId();
+          });
 
-           doInJPA(entityManager -> {
-                Post post = new Post();
-                post.setTitle("High-Performance Java Persistence");
-
-                entityManager.persist(post);
-                return post.getId();
-            });
-
-            doInJPA(entityManager -> {
-                List<Post> posts = entityManager
+      doInJPA(
+          entityManager -> {
+            List<Post> posts =
+                entityManager
                     .createQuery("SELECT p from Post p")
                     .setLockMode(LockModeType.PESSIMISTIC_WRITE)
                     .getResultList();
 
-                //executeStatement(entityManager, "WAITFOR DELAY '00:00:02'");
-                doInJPA(_entityManager -> {
-                    LOGGER.info("Start waiting");
+            // executeStatement(entityManager, "WAITFOR DELAY '00:00:02'");
+            doInJPA(
+                _entityManager -> {
+                  LOGGER.info("Start waiting");
 
-                    List<Post> posts_ = _entityManager
-                        .createQuery("SELECT p from Post p")
-                        .setLockMode(LockModeType.PESSIMISTIC_WRITE)
-                        .getResultList();
+                  List<Post> posts_ =
+                      _entityManager
+                          .createQuery("SELECT p from Post p")
+                          .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                          .getResultList();
 
-                    LOGGER.info("Done waiting");
+                  LOGGER.info("Done waiting");
                 });
-            });
-        } catch (Exception expected) {
-            LOGGER.info("Query timed out", expected);
-        } finally {
-            executeStatement("EXEC sp_configure 'remote query timeout', 0");
-            executeStatement("RECONFIGURE");
-        }
+          });
+    } catch (Exception expected) {
+      LOGGER.info("Query timed out", expected);
+    } finally {
+      executeStatement("EXEC sp_configure 'remote query timeout', 0");
+      executeStatement("RECONFIGURE");
+    }
+  }
+
+  @Test
+  public void testTimeout() {
+    try {
+      executeStatement("EXEC sp_configure 'remote query timeout', 1");
+      executeStatement("RECONFIGURE");
+
+      doInJPA(
+          entityManager -> {
+            LOGGER.info("Start waiting");
+            executeStatement(entityManager, "WAITFOR DELAY '00:00:02'");
+
+            LOGGER.info("Done waiting");
+          });
+    } finally {
+      executeStatement("EXEC sp_configure 'remote query timeout', 0");
+      executeStatement("RECONFIGURE");
+    }
+  }
+
+  @Entity(name = "Post")
+  @Table(name = "post")
+  public static class Post {
+
+    @Id @GeneratedValue private Integer id;
+
+    private String title;
+
+    public Integer getId() {
+      return id;
     }
 
-    @Test
-    public void testTimeout() {
-        try {
-            executeStatement("EXEC sp_configure 'remote query timeout', 1");
-            executeStatement("RECONFIGURE");
-
-            doInJPA(entityManager -> {
-                LOGGER.info("Start waiting");
-                executeStatement(entityManager, "WAITFOR DELAY '00:00:02'");
-
-                LOGGER.info("Done waiting");
-            });
-        } finally {
-            executeStatement("EXEC sp_configure 'remote query timeout', 0");
-            executeStatement("RECONFIGURE");
-        }
+    public String getTitle() {
+      return title;
     }
 
-    @Entity(name = "Post")
-    @Table(name = "post")
-    public static class Post {
-
-        @Id
-        @GeneratedValue
-        private Integer id;
-
-        private String title;
-
-        public Integer getId() {
-            return id;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public Post setTitle(String title) {
-            this.title = title;
-            return this;
-        }
+    public Post setTitle(String title) {
+      this.title = title;
+      return this;
     }
+  }
 }

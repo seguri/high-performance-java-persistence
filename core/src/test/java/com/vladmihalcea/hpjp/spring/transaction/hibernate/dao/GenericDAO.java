@@ -7,7 +7,7 @@ import java.io.Serializable;
  */
 public interface GenericDAO<T, ID extends Serializable> {
 
-    T findById(ID id);
+  T findById(ID id);
 
-    T persist(T entity);
+  T persist(T entity);
 }

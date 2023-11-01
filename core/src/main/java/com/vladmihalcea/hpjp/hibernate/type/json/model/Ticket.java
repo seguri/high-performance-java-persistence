@@ -7,23 +7,23 @@ import java.io.Serializable;
  */
 public class Ticket implements Serializable {
 
-    private String registrationCode;
+  private String registrationCode;
 
-    private double price;
+  private double price;
 
-    public String getRegistrationCode() {
-        return registrationCode;
-    }
+  public String getRegistrationCode() {
+    return registrationCode;
+  }
 
-    public void setRegistrationCode(String registrationCode) {
-        this.registrationCode = registrationCode;
-    }
+  public void setRegistrationCode(String registrationCode) {
+    this.registrationCode = registrationCode;
+  }
 
-    public double getPrice() {
-        return price;
-    }
+  public double getPrice() {
+    return price;
+  }
 
-    public void setPrice(double price) {
-        this.price = price;
-    }
+  public void setPrice(double price) {
+    this.price = price;
+  }
 }

@@ -15,21 +15,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public interface AccountRepository extends JpaRepository<Account, String> {
 
-    @Query(value = """
+  @Query(
+      value = """
         SELECT balance
         FROM account
         WHERE id = :id
         """,
-        nativeQuery = true)
-    long getBalance(@Param("id") String id);
+      nativeQuery = true)
+  long getBalance(@Param("id") String id);
 
-    @Query(value = """
+  @Query(
+      value =
+          """
         UPDATE account
         SET balance = balance + :amount
         WHERE id = :id
         """,
-        nativeQuery = true)
-    @Modifying
-    @Transactional
-    int addToBalance(@Param("id") String id, @Param("amount") long cents);
+      nativeQuery = true)
+  @Modifying
+  @Transactional
+  int addToBalance(@Param("id") String id, @Param("amount") long cents);
 }

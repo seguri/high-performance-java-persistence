@@ -1,10 +1,14 @@
 package com.vladmihalcea.hpjp.spring.transaction.hibernate;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import com.vladmihalcea.hpjp.hibernate.forum.dto.PostDTO;
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Post;
 import com.vladmihalcea.hpjp.hibernate.transaction.forum.Tag;
 import com.vladmihalcea.hpjp.spring.transaction.hibernate.config.HibernateTransactionManagerConfiguration;
 import com.vladmihalcea.hpjp.spring.transaction.hibernate.service.ForumService;
+import java.util.List;
 import org.hibernate.SessionFactory;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,11 +23,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -32,21 +31,20 @@ import static org.junit.Assert.assertNotNull;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class HibernateTransactionManagerTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private SessionFactory sessionFactory;
+  @Autowired private SessionFactory sessionFactory;
 
-    @Autowired
-    private ForumService forumService;
+  @Autowired private ForumService forumService;
 
-    @Before
-    public void init() {
-        try {
-            transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
+  @Before
+  public void init() {
+    try {
+      transactionTemplate.execute(
+          (TransactionCallback<Void>)
+              transactionStatus -> {
                 Tag hibernate = new Tag();
                 hibernate.setName("hibernate");
                 sessionFactory.getCurrentSession().persist(hibernate);
@@ -55,27 +53,27 @@ public class HibernateTransactionManagerTest {
                 jpa.setName("jpa");
                 sessionFactory.getCurrentSession().persist(jpa);
                 return null;
-            });
-        } catch (TransactionException e) {
-            LOGGER.error("Failure", e);
-        }
+              });
+    } catch (TransactionException e) {
+      LOGGER.error("Failure", e);
     }
+  }
 
-    @Test
-    public void test() {
-        Post newPost = forumService.newPost("High-Performance Java Persistence", "hibernate", "jpa");
-        assertNotNull(newPost.getId());
+  @Test
+  public void test() {
+    Post newPost = forumService.newPost("High-Performance Java Persistence", "hibernate", "jpa");
+    assertNotNull(newPost.getId());
 
-        List<Post> posts = forumService.findAllByTitle("High-Performance Java Persistence");
-        assertEquals(1, posts.size());
+    List<Post> posts = forumService.findAllByTitle("High-Performance Java Persistence");
+    assertEquals(1, posts.size());
 
-        Post post = forumService.findById(newPost.getId());
-        assertEquals("High-Performance Java Persistence", post.getTitle());
+    Post post = forumService.findById(newPost.getId());
+    assertEquals("High-Performance Java Persistence", post.getTitle());
 
-        PostDTO postDTO = forumService.getPostDTOById(newPost.getId());
-        assertEquals("High-Performance Java Persistence", postDTO.getTitle());
+    PostDTO postDTO = forumService.getPostDTOById(newPost.getId());
+    assertEquals("High-Performance Java Persistence", postDTO.getTitle());
 
-        //Do nothing in the transaction to check the no statement warning
-        forumService.processData();
-    }
+    // Do nothing in the transaction to check the no statement warning
+    forumService.processData();
+  }
 }

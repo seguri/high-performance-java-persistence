@@ -9,13 +9,12 @@ import java.util.Date;
  */
 public class UpdatableListener {
 
-    @PrePersist
-    @PreUpdate
-    private void setCurrentTimestamp(Object entity) {
-        if(entity instanceof Updatable) {
-            Updatable updatable = (Updatable) entity;
-            updatable.setTimestamp(new Date());
-        }
+  @PrePersist
+  @PreUpdate
+  private void setCurrentTimestamp(Object entity) {
+    if (entity instanceof Updatable) {
+      Updatable updatable = (Updatable) entity;
+      updatable.setTimestamp(new Date());
     }
-
+  }
 }

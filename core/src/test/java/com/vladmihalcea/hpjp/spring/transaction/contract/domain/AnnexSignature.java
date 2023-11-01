@@ -9,25 +9,24 @@ import org.hibernate.annotations.OnDeleteAction;
  */
 @Entity
 @Table(name = "annex_signature")
-public class AnnexSignature extends BaseSignature<AnnexSignature>
-    implements RootAware<Contract> {
+public class AnnexSignature extends BaseSignature<AnnexSignature> implements RootAware<Contract> {
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    private Annex annex;
+  @OneToOne(fetch = FetchType.LAZY)
+  @MapsId
+  @OnDelete(action = OnDeleteAction.CASCADE)
+  private Annex annex;
 
-    public Annex getAnnex() {
-        return annex;
-    }
+  public Annex getAnnex() {
+    return annex;
+  }
 
-    public AnnexSignature setAnnex(Annex annex) {
-        this.annex = annex;
-        return this;
-    }
+  public AnnexSignature setAnnex(Annex annex) {
+    this.annex = annex;
+    return this;
+  }
 
-    @Override
-    public Contract root() {
-        return annex.root();
-    }
+  @Override
+  public Contract root() {
+    return annex.root();
+  }
 }

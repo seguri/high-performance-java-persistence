@@ -5,23 +5,24 @@ import jakarta.persistence.*;
 /**
  * @author Vlad Mihalcea
  */
-public class IdentityPostEntityProvider extends PostEntityProvider<IdentityPostEntityProvider.Post> {
+public class IdentityPostEntityProvider
+    extends PostEntityProvider<IdentityPostEntityProvider.Post> {
 
-    public IdentityPostEntityProvider() {
-        super(Post.class);
-    }
+  public IdentityPostEntityProvider() {
+    super(Post.class);
+  }
 
-    @Override
-    public Post newPost() {
-        return new Post();
-    }
+  @Override
+  public Post newPost() {
+    return new Post();
+  }
 
-    @Entity(name = "Post")
-    @Table(name = "post")
-    public static class Post {
+  @Entity(name = "Post")
+  @Table(name = "post")
+  public static class Post {
 
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Long id;
-    }
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+  }
 }

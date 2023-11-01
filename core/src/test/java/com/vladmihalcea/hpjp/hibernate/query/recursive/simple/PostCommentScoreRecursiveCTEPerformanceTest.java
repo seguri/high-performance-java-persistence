@@ -2,25 +2,29 @@ package com.vladmihalcea.hpjp.hibernate.query.recursive.simple;
 
 import com.vladmihalcea.hpjp.hibernate.query.recursive.PostCommentScore;
 import com.vladmihalcea.hpjp.hibernate.query.recursive.PostCommentScoreResultTransformer;
-import org.hibernate.query.NativeQuery;
-
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.hibernate.query.NativeQuery;
 
 /**
  * @author Vlad Mihalcea
  */
-public class PostCommentScoreRecursiveCTEPerformanceTest extends AbstractPostCommentScorePerformanceTest {
+public class PostCommentScoreRecursiveCTEPerformanceTest
+    extends AbstractPostCommentScorePerformanceTest {
 
-    public PostCommentScoreRecursiveCTEPerformanceTest(int postCount, int commentCount) {
-        super(postCount, commentCount);
-    }
+  public PostCommentScoreRecursiveCTEPerformanceTest(int postCount, int commentCount) {
+    super(postCount, commentCount);
+  }
 
-    @Override
-    protected List<PostCommentScore> postCommentScores(Long postId, int rank) {
-        return doInJPA(entityManager -> {
-            long startNanos = System.nanoTime();
-            List<PostCommentScore> postCommentScores = entityManager.createNativeQuery("""
+  @Override
+  protected List<PostCommentScore> postCommentScores(Long postId, int rank) {
+    return doInJPA(
+        entityManager -> {
+          long startNanos = System.nanoTime();
+          List<PostCommentScore> postCommentScores =
+              entityManager
+                  .createNativeQuery(
+                      """
                     SELECT id, parent_id, root_id, review, created_on, score
                     FROM (
                         SELECT
@@ -30,10 +34,10 @@ public class PostCommentScoreRecursiveCTEPerformanceTest extends AbstractPostCom
                            SELECT
                                id, parent_id, root_id, review, created_on, score,
                                SUM(score) OVER (PARTITION BY root_id) total_score
-                           FROM (          
-                                WITH RECURSIVE post_comment_score(id, root_id, post_id, parent_id, review, created_on, score) AS (              
+                           FROM (
+                                WITH RECURSIVE post_comment_score(id, root_id, post_id, parent_id, review, created_on, score) AS (
                                   SELECT
-                                      id, id, post_id, parent_id, review, created_on, score              
+                                      id, id, post_id, parent_id, review, created_on, score
                                   FROM post_comment
                                   WHERE post_id = :postId AND parent_id IS NULL
                                   UNION ALL
@@ -49,14 +53,15 @@ public class PostCommentScoreRecursiveCTEPerformanceTest extends AbstractPostCom
                         ) score_total
                         ORDER BY total_score DESC, id ASC
                     ) total_score_group
-                    WHERE rank <= :rank""", "PostCommentScore")
-            .setParameter("postId", postId)
-            .setParameter("rank", rank)
-            .unwrap(NativeQuery.class)
-            .setResultTransformer(new PostCommentScoreResultTransformer())
-            .getResultList();
-            timer.update(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
-            return postCommentScores;
+                    WHERE rank <= :rank""",
+                      "PostCommentScore")
+                  .setParameter("postId", postId)
+                  .setParameter("rank", rank)
+                  .unwrap(NativeQuery.class)
+                  .setResultTransformer(new PostCommentScoreResultTransformer())
+                  .getResultList();
+          timer.update(System.nanoTime() - startNanos, TimeUnit.NANOSECONDS);
+          return postCommentScores;
         });
-    }
+  }
 }

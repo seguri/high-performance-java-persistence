@@ -19,8 +19,7 @@ public class TabObject extends AbstractEntity<Long> {
   @OneToMany(mappedBy = "tabObject")
   private List<TabInstance> tabInstances;
 
-  public TabObject() {
-  }
+  public TabObject() {}
 
   @Override
   public Long getId() {
@@ -64,5 +63,4 @@ public class TabObject extends AbstractEntity<Long> {
 
     return tabInstance;
   }
-
 }

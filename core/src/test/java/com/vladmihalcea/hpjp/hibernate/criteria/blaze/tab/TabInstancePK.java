@@ -15,8 +15,7 @@ public class TabInstancePK implements Serializable {
   @Column(name = "tab_ver", insertable = false, updatable = false)
   private long tabVer;
 
-  public TabInstancePK() {
-  }
+  public TabInstancePK() {}
 
   public long getTabKey() {
     return this.tabKey;

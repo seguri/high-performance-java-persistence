@@ -7,7 +7,7 @@ package com.vladmihalcea.hpjp.hibernate.criteria.blaze.bulk;
  * @since 1.x.y
  */
 public enum PostStatus {
-    PENDING,
-    APPROVED,
-    SPAM
+  PENDING,
+  APPROVED,
+  SPAM
 }

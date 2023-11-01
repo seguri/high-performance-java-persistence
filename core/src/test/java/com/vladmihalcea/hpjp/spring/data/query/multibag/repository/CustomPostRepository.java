@@ -1,7 +1,6 @@
 package com.vladmihalcea.hpjp.spring.data.query.multibag.repository;
 
 import com.vladmihalcea.hpjp.spring.data.query.multibag.domain.Post;
-
 import java.util.List;
 
 /**
@@ -9,5 +8,5 @@ import java.util.List;
  */
 public interface CustomPostRepository {
 
-    List<Post> findAllWithCommentsAndTags(long minId, long maxId);
+  List<Post> findAllWithCommentsAndTags(long minId, long maxId);
 }

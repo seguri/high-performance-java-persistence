@@ -2,6 +2,8 @@ package com.vladmihalcea.hpjp.hibernate.schema.flyway;
 
 import com.vladmihalcea.hpjp.util.providers.Database;
 import com.vladmihalcea.hpjp.util.spring.config.jpa.PostgreSQLJPAConfiguration;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.hibernate.Session;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,9 +20,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -29,43 +28,45 @@ import jakarta.persistence.PersistenceContext;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class DropPostgreSQLPublicSchemaTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private Database database;
+  @Autowired private Database database;
 
-    private boolean drop = true;
+  private boolean drop = true;
 
-    @Test
-    public void test() {
-        if (drop) {
-            try {
-                transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
-                    Session session = entityManager.unwrap(Session.class);
-                    session.doWork(connection -> {
-                        ScriptUtils.executeSqlScript(connection,
+  @Test
+  public void test() {
+    if (drop) {
+      try {
+        transactionTemplate.execute(
+            (TransactionCallback<Void>)
+                transactionStatus -> {
+                  Session session = entityManager.unwrap(Session.class);
+                  session.doWork(
+                      connection -> {
+                        ScriptUtils.executeSqlScript(
+                            connection,
                             new EncodedResource(
                                 new ClassPathResource(
-                                    String.format("flyway/scripts/%1$s/drop/drop.sql", database.name().toLowerCase())
-                                )
-                            ),
-                            true, true,
+                                    String.format(
+                                        "flyway/scripts/%1$s/drop/drop.sql",
+                                        database.name().toLowerCase()))),
+                            true,
+                            true,
                             ScriptUtils.DEFAULT_COMMENT_PREFIX,
                             ScriptUtils.DEFAULT_BLOCK_COMMENT_START_DELIMITER,
                             ScriptUtils.DEFAULT_BLOCK_COMMENT_END_DELIMITER,
                             ScriptUtils.DEFAULT_COMMENT_PREFIX);
-                    });
-                    return null;
+                      });
+                  return null;
                 });
-            } catch (TransactionException e) {
-                LOGGER.error("Failure", e);
-            }
-        }
+      } catch (TransactionException e) {
+        LOGGER.error("Failure", e);
+      }
     }
+  }
 }

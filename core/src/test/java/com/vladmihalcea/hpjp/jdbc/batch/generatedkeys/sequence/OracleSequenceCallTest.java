@@ -10,13 +10,13 @@ import com.vladmihalcea.hpjp.util.providers.OracleDataSourceProvider;
  */
 public class OracleSequenceCallTest extends AbstractSequenceCallTest {
 
-    @Override
-    protected String callSequenceSyntax() {
-        return "select post_seq.NEXTVAL from dual";
-    }
+  @Override
+  protected String callSequenceSyntax() {
+    return "select post_seq.NEXTVAL from dual";
+  }
 
-    @Override
-    protected DataSourceProvider dataSourceProvider() {
-        return new OracleDataSourceProvider();
-    }
+  @Override
+  protected DataSourceProvider dataSourceProvider() {
+    return new OracleDataSourceProvider();
+  }
 }

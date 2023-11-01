@@ -7,9 +7,9 @@ import com.vladmihalcea.hpjp.hibernate.forum.Post;
  */
 public interface ForumService {
 
-    Post findById(Long id);
+  Post findById(Long id);
 
-    Post createPost(Post post);
+  Post createPost(Post post);
 
-    Post updatePost(Post post);
+  Post updatePost(Post post);
 }

@@ -1,5 +1,8 @@
 package com.vladmihalcea.hpjp.spring.data.query.example;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
 import com.vladmihalcea.hpjp.spring.data.query.example.config.SpringDataJPAQueryByExampleConfiguration;
 import com.vladmihalcea.hpjp.spring.data.query.example.domain.Post;
 import com.vladmihalcea.hpjp.spring.data.query.example.domain.PostComment;
@@ -8,6 +11,9 @@ import com.vladmihalcea.hpjp.spring.data.query.example.domain.Tag;
 import com.vladmihalcea.hpjp.spring.data.query.example.repository.PostCommentRepository;
 import com.vladmihalcea.hpjp.spring.data.query.example.repository.PostRepository;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,13 +28,6 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
 /**
  * @author Vlad Mihalcea
  */
@@ -37,208 +36,190 @@ import static org.junit.Assert.assertFalse;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public class SpringDataJPAQueryByExampleTest {
 
-    protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
+  protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    public static final int POST_COUNT = 2;
-    public static final int POST_COMMENT_COUNT = 10;
-    public static final int TAG_COUNT = 10;
+  public static final int POST_COUNT = 2;
+  public static final int POST_COMMENT_COUNT = 10;
+  public static final int TAG_COUNT = 10;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+  @Autowired private TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private EntityManager entityManager;
+  @Autowired private EntityManager entityManager;
 
-    @Autowired
-    private PostRepository postRepository;
+  @Autowired private PostRepository postRepository;
 
-    @Autowired
-    private PostCommentRepository postCommentRepository;
+  @Autowired private PostCommentRepository postCommentRepository;
 
-    @Before
-    public void init() {
-        try {
-            transactionTemplate.execute((TransactionCallback<Void>) transactionStatus -> {
+  @Before
+  public void init() {
+    try {
+      transactionTemplate.execute(
+          (TransactionCallback<Void>)
+              transactionStatus -> {
                 List<Tag> tags = new ArrayList<>();
 
                 for (long i = 1; i <= TAG_COUNT; i++) {
-                    Tag tag = new Tag()
-                        .setId(i)
-                        .setName(String.format("Tag nr. %d", i));
+                  Tag tag = new Tag().setId(i).setName(String.format("Tag nr. %d", i));
 
-                    entityManager.persist(tag);
-                    tags.add(tag);
+                  entityManager.persist(tag);
+                  tags.add(tag);
                 }
 
-                LocalDateTime timestamp = LocalDateTime.of(
-                    2023, 3, 15, 12, 0, 0, 0
-                );
+                LocalDateTime timestamp = LocalDateTime.of(2023, 3, 15, 12, 0, 0, 0);
 
                 long commentId = 0;
 
                 for (long postId = 1; postId <= POST_COUNT; postId++) {
-                    Post post = new Post()
-                        .setId(postId)
-                        .setTitle(String.format("Post nr. %d", postId));
+                  Post post =
+                      new Post().setId(postId).setTitle(String.format("Post nr. %d", postId));
 
-                    for (long i = 1; i <= POST_COMMENT_COUNT; i++) {
-                        PostComment comment = new PostComment()
+                  for (long i = 1; i <= POST_COMMENT_COUNT; i++) {
+                    PostComment comment =
+                        new PostComment()
                             .setId(++commentId)
-                            .setReview(i % 7 == 0 ? "Spam comment" : String.format("Awesome post %d", i))
+                            .setReview(
+                                i % 7 == 0 ? "Spam comment" : String.format("Awesome post %d", i))
                             .setStatus(PostComment.Status.PENDING)
                             .setCreatedOn(timestamp.plusMinutes(postId))
                             .setVotes((int) (i % 7));
 
-                        post.addComment(comment);
-                    }
+                    post.addComment(comment);
+                  }
 
-                    for (int i = 0; i < TAG_COUNT; i++) {
-                        post.getTags().add(tags.get(i));
-                    }
+                  for (int i = 0; i < TAG_COUNT; i++) {
+                    post.getTags().add(tags.get(i));
+                  }
 
-                    entityManager.persist(post);
+                  entityManager.persist(post);
                 }
 
                 return null;
-            });
-        } catch (TransactionException e) {
-            LOGGER.error("Failure", e);
-        }
+              });
+    } catch (TransactionException e) {
+      LOGGER.error("Failure", e);
     }
+  }
 
-    @Test
-    public void testFindByReview() {
-        Example<PostComment> postExample = Example.of(
-            new PostComment()
-                .setReview("Spam comment"),
+  @Test
+  public void testFindByReview() {
+    Example<PostComment> postExample =
+        Example.of(
+            new PostComment().setReview("Spam comment"),
             ExampleMatcher.matching()
                 .withIgnorePaths(PostComment_.VOTES)
-                .withStringMatcher(ExampleMatcher.StringMatcher.EXACT)
-        );
+                .withStringMatcher(ExampleMatcher.StringMatcher.EXACT));
 
-        List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(postExample);
-        assertFalse(comments.isEmpty());
-    }
+    List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(postExample);
+    assertFalse(comments.isEmpty());
+  }
 
-    @Test
-    public void testFindByPost() {
-        PostComment postComment = new PostComment()
-            .setPost(
-                new Post()
-                    .setId(1L)
-            );
+  @Test
+  public void testFindByPost() {
+    PostComment postComment = new PostComment().setPost(new Post().setId(1L));
 
-        List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(
-            Example.of(
-                postComment,
-                ExampleMatcher.matching()
-                    .withIgnorePaths(PostComment_.VOTES)
-            )
-        );
-        assertEquals(POST_COMMENT_COUNT, comments.size());
-    }
+    List<PostComment> comments =
+        (List<PostComment>)
+            postCommentRepository.findAll(
+                Example.of(
+                    postComment, ExampleMatcher.matching().withIgnorePaths(PostComment_.VOTES)));
+    assertEquals(POST_COMMENT_COUNT, comments.size());
+  }
 
-    @Test
-    public void testFindByPostOrderByCreatedOn() {
-        PostComment postComment = new PostComment()
-            .setPost(
-                new Post()
-                    .setId(1L)
-            );
+  @Test
+  public void testFindByPostOrderByCreatedOn() {
+    PostComment postComment = new PostComment().setPost(new Post().setId(1L));
 
-        List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(
-            Example.of(
-                postComment,
-                ExampleMatcher.matching()
-                    .withIgnorePaths(PostComment_.VOTES)
-            ),
-            Sort.by(Sort.Order.asc(PostComment_.CREATED_ON))
-        );
+    List<PostComment> comments =
+        (List<PostComment>)
+            postCommentRepository.findAll(
+                Example.of(
+                    postComment, ExampleMatcher.matching().withIgnorePaths(PostComment_.VOTES)),
+                Sort.by(Sort.Order.asc(PostComment_.CREATED_ON)));
 
-        assertEquals(POST_COMMENT_COUNT, comments.size());
-    }
+    assertEquals(POST_COMMENT_COUNT, comments.size());
+  }
 
-    @Test
-    public void testFindByPostAndStatusOrderByCreatedOn() {
-        List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(
-            Example.of(
-                new PostComment()
-                    .setPost(new Post().setId(1L))
-                    .setStatus(PostComment.Status.PENDING),
-                ExampleMatcher.matching()
-                    .withIgnorePaths(PostComment_.VOTES)
-            ),
-            Sort.by(Sort.Order.asc(PostComment_.CREATED_ON))
-        );
+  @Test
+  public void testFindByPostAndStatusOrderByCreatedOn() {
+    List<PostComment> comments =
+        (List<PostComment>)
+            postCommentRepository.findAll(
+                Example.of(
+                    new PostComment()
+                        .setPost(new Post().setId(1L))
+                        .setStatus(PostComment.Status.PENDING),
+                    ExampleMatcher.matching().withIgnorePaths(PostComment_.VOTES)),
+                Sort.by(Sort.Order.asc(PostComment_.CREATED_ON)));
 
-        assertEquals(POST_COMMENT_COUNT, comments.size());
-    }
+    assertEquals(POST_COMMENT_COUNT, comments.size());
+  }
 
-    @Test
-    public void testFindByPostAndStatusAndReviewLikeOrderByCreatedOn() {
-        PostComment postComment = new PostComment()
+  @Test
+  public void testFindByPostAndStatusAndReviewLikeOrderByCreatedOn() {
+    PostComment postComment =
+        new PostComment()
             .setPost(new Post().setId(1L))
             .setStatus(PostComment.Status.PENDING)
             .setReview("Spam");
 
-        List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(
-            Example.of(
-                postComment,
-                ExampleMatcher.matching()
-                    .withIgnorePaths(PostComment_.VOTES)
-                    .withMatcher(
-                        PostComment_.REVIEW,
-                        ExampleMatcher.GenericPropertyMatcher::contains
-                    )
-            ),
-            Sort.by(Sort.Order.asc(PostComment_.CREATED_ON))
-        );
+    List<PostComment> comments =
+        (List<PostComment>)
+            postCommentRepository.findAll(
+                Example.of(
+                    postComment,
+                    ExampleMatcher.matching()
+                        .withIgnorePaths(PostComment_.VOTES)
+                        .withMatcher(
+                            PostComment_.REVIEW, ExampleMatcher.GenericPropertyMatcher::contains)),
+                Sort.by(Sort.Order.asc(PostComment_.CREATED_ON)));
 
-        assertFalse(comments.isEmpty());
-    }
+    assertFalse(comments.isEmpty());
+  }
 
-    @Test
-    public void testFindByPostAndStatusAndReviewLikeAndVotesGreaterThanEqualOrderByCreatedOn() {
-        String reviewPattern = "Awesome";
-        int votes = 0;
+  @Test
+  public void testFindByPostAndStatusAndReviewLikeAndVotesGreaterThanEqualOrderByCreatedOn() {
+    String reviewPattern = "Awesome";
+    int votes = 0;
 
-        PostComment postComment = new PostComment()
+    PostComment postComment =
+        new PostComment()
             .setPost(new Post().setId(1L))
             .setStatus(PostComment.Status.PENDING)
             .setReview(reviewPattern)
             .setVotes(votes);
 
-        List<PostComment> comments = (List<PostComment>) postCommentRepository.findAll(
-            Example.of(
-                postComment,
-                ExampleMatcher.matching()
-                    .withMatcher(PostComment_.REVIEW, ExampleMatcher.GenericPropertyMatcher::contains)
-            ),
-            Sort.by(Sort.Order.asc(PostComment_.CREATED_ON))
-        );
-    }
+    List<PostComment> comments =
+        (List<PostComment>)
+            postCommentRepository.findAll(
+                Example.of(
+                    postComment,
+                    ExampleMatcher.matching()
+                        .withMatcher(
+                            PostComment_.REVIEW, ExampleMatcher.GenericPropertyMatcher::contains)),
+                Sort.by(Sort.Order.asc(PostComment_.CREATED_ON)));
+  }
 
-    @Test
-    public void testFindBy() {
-        String reviewPattern = "Awesome";
-        int pageSize = 10;
+  @Test
+  public void testFindBy() {
+    String reviewPattern = "Awesome";
+    int pageSize = 10;
 
-        PostComment postComment = new PostComment()
+    PostComment postComment =
+        new PostComment()
             .setPost(new Post().setId(1L))
             .setStatus(PostComment.Status.PENDING)
             .setReview(reviewPattern);
 
-        Page<PostComment> comments = postCommentRepository.findBy(
+    Page<PostComment> comments =
+        postCommentRepository.findBy(
             Example.of(
                 postComment,
                 ExampleMatcher.matching()
                     .withIgnorePaths(PostComment_.VOTES)
-                    .withMatcher(PostComment_.REVIEW, ExampleMatcher.GenericPropertyMatcher::contains)
-            ),
-            q -> q
-                .sortBy(Sort.by(PostComment_.CREATED_ON).ascending())
-                .page(Pageable.ofSize(pageSize))
-        );
-    }
+                    .withMatcher(
+                        PostComment_.REVIEW, ExampleMatcher.GenericPropertyMatcher::contains)),
+            q ->
+                q.sortBy(Sort.by(PostComment_.CREATED_ON).ascending())
+                    .page(Pageable.ofSize(pageSize)));
+  }
 }
-
