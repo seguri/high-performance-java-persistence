@@ -550,6 +550,9 @@
         <hypersistence-optimizer.version>2.4.2</hypersistence-optimizer.version>
 
         <junit.version>4.13.1</junit.version>
+
+        <dep.plugin.spotless.version>2.38.0</dep.plugin.spotless.version>
+        <dep.plugin.googleJavaFormat.version>1.18.1</dep.plugin.googleJavaFormat.version>
     </properties>
 
     <repositories>
@@ -580,6 +583,36 @@
                 <configuration>
                     <argLine>${argLine}</argLine>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${dep.plugin.spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>${dep.plugin.googleJavaFormat.version}</version>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                        <removeUnusedImports />
+                    </java>
+                    <pom>
+                        <sortPom>
+                            <indentSchemaLocation>true</indentSchemaLocation>
+                            <expandEmptyElements>false</expandEmptyElements>
+                        </sortPom>
+                    </pom>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
